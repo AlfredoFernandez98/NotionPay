@@ -8,6 +8,8 @@ import io.javalin.Javalin;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
+import java.util.Scanner;
+
 /**
  * Main class for testing the NotionPay project setup
  * This verifies that Hibernate, Lombok, PostgreSQL, and Javalin are all working correctly
@@ -35,6 +37,16 @@ public class Main {
         System.out.println("=" .repeat(50));
         System.out.println("\n💡 Tip: Uncomment testJavalinServer() to test the web server");
         System.out.println("   Then visit: http://localhost:7070/api/routes");
+        
+        // Keep the program running so you can see the results
+        System.out.println("\n⏸️  Press ENTER to exit...");
+        try {
+            new Scanner(System.in).nextLine();
+        } catch (Exception e) {
+            // Ignore if running in non-interactive mode
+        }
+        
+        System.out.println("\n👋 Goodbye!");
     }
     
     /**
