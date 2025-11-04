@@ -125,6 +125,7 @@ public class Main {
     private static void testLombokAnnotations() {
         System.out.println("\n🔧 Test 3: Lombok Annotations");
         System.out.println("-".repeat(50));
+
         
         try {
             // Test @Getter and @Setter
