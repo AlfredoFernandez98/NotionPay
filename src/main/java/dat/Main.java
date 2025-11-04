@@ -29,14 +29,14 @@ public class Main {
         // Test 3: Lombok Annotations
         testLombokAnnotations();
         
-        // Test 4: Javalin Server (optional - uncomment to test)
-        // testJavalinServer();
+        // Test 4: Javalin Server
+        testJavalinServer();
         
         System.out.println("\n" + "=" .repeat(50));
         System.out.println("✅ All tests completed successfully!");
         System.out.println("=" .repeat(50));
-        System.out.println("\n💡 Tip: Uncomment testJavalinServer() to test the web server");
-        System.out.println("   Then visit: http://localhost:7070/api/routes");
+        System.out.println("\n🌐 Web server is running at: http://localhost:7070");
+        System.out.println("   Visit: http://localhost:7070/api/routes to see all endpoints");
         
         // Keep the program running so you can see the results
         System.out.println("\n⏸️  Press ENTER to exit...");
