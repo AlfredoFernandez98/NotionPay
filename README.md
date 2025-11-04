@@ -1,13 +1,5 @@
-# Startcode for Java Deep Dive II week
+# NotionPay hovedopgave
 
-Includes:
-- IntelliJ setup
-- JPA dependencies
-- Lombok
-- Junit 5
-- Postgres drivers
-- Test containers
+Alfredo M. Fernandez - cph-af201@stud.ek.dk
 
-Is created for Java 17 corretto
-
-The Person entity is just for testing purposes and needs a database called "Person" to work with JPA.
+Masih Bijan Kabiri - cph-mk330@stud.ek.dk
