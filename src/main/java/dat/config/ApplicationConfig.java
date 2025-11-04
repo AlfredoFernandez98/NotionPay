@@ -5,7 +5,7 @@ import dat.exceptions.ApiException;
 import dat.routes.Routes;
 import dat.security.controllers.AccessController;
 import dat.security.controllers.SecurityController;
-import dat.security.enums.Role;;
+import dat.security.enums.Role;
 import dat.security.exceptions.NotAuthorizedException;
 import dat.security.routes.SecurityRoutes;
 import dat.utils.Utils;
