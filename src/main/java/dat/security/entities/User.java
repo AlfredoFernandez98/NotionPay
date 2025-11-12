@@ -17,9 +17,7 @@ import java.util.Set;
 @Table(name = "users")
 @NamedQueries(@NamedQuery(name = "User.deleteAllRows", query = "DELETE from User"))
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @ToString
 public class User implements Serializable, ISecurityUser {
 
@@ -28,13 +26,13 @@ public class User implements Serializable, ISecurityUser {
 
     @Id
     @Basic(optional = false)
-    @Column(name = "username", length = 25)
-    private String username;
+    @Column(name = "email", length = 254)
+    private String email;
     @Basic(optional = false)
     @Column(name = "password")
     private String password;
 
-    @JoinTable(name = "user_roles", joinColumns = {@JoinColumn(name = "user_name", referencedColumnName = "username")}, inverseJoinColumns = {@JoinColumn(name = "role_name", referencedColumnName = "name")})
+    @JoinTable(name = "user_roles", joinColumns = {@JoinColumn(name = "email", referencedColumnName = "email")}, inverseJoinColumns = {@JoinColumn(name = "role_name", referencedColumnName = "name")})
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
     private Set<Role> roles = new HashSet<>();
 
@@ -53,13 +51,13 @@ public class User implements Serializable, ISecurityUser {
         return BCrypt.checkpw(pw, this.password);
     }
 
-    public User(String userName, String userPass) {
-        this.username = userName;
+    public User(String email, String userPass) {
+        this.email = email;
         this.password = BCrypt.hashpw(userPass, BCrypt.gensalt());
     }
 
-    public User(String userName, Set<Role> roleEntityList) {
-        this.username = userName;
+    public User(String email, Set<Role> roleEntityList) {
+        this.email = email;
         this.roles = roleEntityList;
     }
 

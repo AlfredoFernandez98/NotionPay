@@ -2,18 +2,50 @@
 GET {{url}}/auth/test/
 
 ### Create a new user - this one will only get a USER role by default
+### IMPORTANT: email + serialNumber must exist in PreRegistrationData table!
+### Test with REAL data from mock database migration
+
+### TEST 1: Valid registration (should succeed) ✅
 POST {{url}}/auth/register/
 
 {
-    "username": "user",
-    "password": "test123"
+    "email": "ellab@gmail.dk",
+    "password": "test123",
+    "serialNumber": 101010101
 }
 
-###
+### TEST 2: Another valid registration ✅
+POST {{url}}/auth/register/
+
+{
+    "email": "test.user@notion.io",
+    "password": "securePass456",
+    "serialNumber": 404040404
+}
+
+### TEST 3: Already used serial number (should fail) ❌
+POST {{url}}/auth/register/
+
+{
+    "email": "bbb@hotmail.dk",
+    "password": "test123",
+    "serialNumber": 202020202
+}
+
+### TEST 4: Invalid serial number (should fail) ❌
+POST {{url}}/auth/register/
+
+{
+    "email": "ellab@gmail.dk",
+    "password": "test123",
+    "serialNumber": 999999999
+}
+
+### Login with registered user
 POST {{url}}/auth/login/
 
 {
-    "username": "user",
+    "email": "ellab@gmail.dk",
     "password": "test123"
 }
 
