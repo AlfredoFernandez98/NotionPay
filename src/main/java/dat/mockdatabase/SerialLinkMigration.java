@@ -22,7 +22,7 @@ public class SerialLinkMigration {
      * Populate SerialLinks with associated Plans
      */
     public static void populateSerialLinksAndPlans() {
-        System.out.println("\n🔗 Populating SerialLinks with Plans (Simulating External DB)");
+        System.out.println("\n Populating SerialLinks with Plans (Simulating External DB)");
         System.out.println("-".repeat(60));
 
         EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory();
@@ -124,24 +124,24 @@ public class SerialLinkMigration {
             em.getTransaction().commit();
             
             // Print summary
-            System.out.println("\n✅ Created 5 SerialLink records:");
-            System.out.println("\n📋 AVAILABLE FOR REGISTRATION (Status: PENDING):");
+            System.out.println("\n Created 5 SerialLink records:");
+            System.out.println("\n AVAILABLE FOR REGISTRATION (Status: PENDING):");
             System.out.println("   1. Serial: 101010101 → Basic Monthly Plan");
             System.out.println("   2. Serial: 404040404 → Professional Monthly Plan");
             System.out.println("   3. Serial: 505050505 → Enterprise Yearly Plan");
             
-            System.out.println("\n🚫 NOT AVAILABLE:");
+            System.out.println("\n NOT AVAILABLE:");
             System.out.println("   1. Serial: 202020202 [VERIFIED - already used]");
             System.out.println("   2. Serial: 999999999 [REJECTED - invalid]");
             
-            System.out.println("\n✅ SerialLink migration completed successfully");
-            System.out.println("💡 Each serial number is now linked to a specific Plan!");
+            System.out.println("\n SerialLink migration completed successfully");
+            System.out.println(" Each serial number is now linked to a specific Plan!");
             
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
-            System.err.println("\n❌ SerialLink migration failed: " + e.getMessage());
+            System.err.println("\n SerialLink migration failed: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Migration failed", e);
         } finally {
@@ -163,12 +163,12 @@ public class SerialLinkMigration {
             em.createQuery("DELETE FROM SerialLink").executeUpdate();
             em.createQuery("DELETE FROM Plan").executeUpdate();
             em.getTransaction().commit();
-            System.out.println("✅ All SerialLinks and Plans cleared");
+            System.out.println(" All SerialLinks and Plans cleared");
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
-            System.err.println("❌ Failed to clear data: " + e.getMessage());
+            System.err.println(" Failed to clear data: " + e.getMessage());
             throw new RuntimeException("Clear failed", e);
         } finally {
             em.close();

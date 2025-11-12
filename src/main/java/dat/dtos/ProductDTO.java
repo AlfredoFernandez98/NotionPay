@@ -1,14 +1,14 @@
 package dat.dtos;
 
 import dat.enums.Currency;
-import dat.enums.Period;
+import dat.enums.ProductType;
 
-public class PlanDTO {
+public class ProductDTO {
     public Long id;
+    public ProductType productType;
     public String name;
-    public Period period;
-    public Double priceCents;
+    public Integer priceCents;
     public Currency currency;
     public String description;
-    public Boolean active;
 }
+

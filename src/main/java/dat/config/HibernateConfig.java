@@ -45,10 +45,25 @@ public class HibernateConfig {
         configuration.addAnnotatedClass(User.class);
         configuration.addAnnotatedClass(Role.class);
         
-        // Business entities
+        // Core business entities
+        configuration.addAnnotatedClass(dat.entities.Customer.class);
         configuration.addAnnotatedClass(dat.entities.Plan.class);
         configuration.addAnnotatedClass(dat.entities.SerialLink.class);
-        configuration.addAnnotatedClass(dat.entities.Customer.class);
+        configuration.addAnnotatedClass(dat.entities.Subscription.class);
+        
+        // Product entities
+        configuration.addAnnotatedClass(dat.entities.Product.class);
+        configuration.addAnnotatedClass(dat.entities.SmsProduct.class);
+        configuration.addAnnotatedClass(dat.entities.SmsBalance.class);
+        
+        // Payment entities
+        configuration.addAnnotatedClass(dat.entities.PaymentMethod.class);
+        configuration.addAnnotatedClass(dat.entities.Payment.class);
+        configuration.addAnnotatedClass(dat.entities.Receipt.class);
+        
+        // Session and logging
+        configuration.addAnnotatedClass(dat.entities.Session.class);
+        configuration.addAnnotatedClass(dat.entities.ActivityLog.class);
     }
 
     private static EntityManagerFactory createEMF(boolean forTest) {

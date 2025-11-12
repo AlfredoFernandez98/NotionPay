@@ -1,7 +1,8 @@
 package dat.daos.impl;
 
 import dat.daos.IDAO;
-import dat.entities.Plan;
+import dat.entities.Product;
+import dat.enums.ProductType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
@@ -10,43 +11,43 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class PlanDAO implements IDAO<Plan> {
-    private static PlanDAO instance;
+public class ProductDAO implements IDAO<Product> {
+    private static ProductDAO instance;
     private static EntityManagerFactory emf;
 
-    public static PlanDAO getInstance(EntityManagerFactory _emf) {
+    public static ProductDAO getInstance(EntityManagerFactory _emf) {
         if (instance == null) {
             emf = _emf;
-            instance = new PlanDAO();
+            instance = new ProductDAO();
         }
         return instance;
     }
 
-    private PlanDAO() {
+    private ProductDAO() {
     }
 
     @Override
-    public Plan create(Plan plan) {
+    public Product create(Product product) {
         try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
-            em.persist(plan);
+            em.persist(product);
             em.getTransaction().commit();
-            return plan;
+            return product;
         }
     }
 
     @Override
-    public Optional<Plan> getById(Long id) {
+    public Optional<Product> getById(Long id) {
         try (EntityManager em = emf.createEntityManager()) {
-            Plan plan = em.find(Plan.class, id);
-            return Optional.ofNullable(plan);
+            Product product = em.find(Product.class, id);
+            return Optional.ofNullable(product);
         }
     }
 
     @Override
-    public Set<Plan> getAll() {
+    public Set<Product> getAll() {
         try (EntityManager em = emf.createEntityManager()) {
-            return em.createQuery("SELECT p FROM Plan p", Plan.class)
+            return em.createQuery("SELECT p FROM Product p", Product.class)
                     .getResultList()
                     .stream()
                     .collect(Collectors.toSet());
@@ -54,10 +55,10 @@ public class PlanDAO implements IDAO<Plan> {
     }
 
     @Override
-    public void update(Plan plan) {
+    public void update(Product product) {
         try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
-            em.merge(plan);
+            em.merge(product);
             em.getTransaction().commit();
         }
     }
@@ -66,35 +67,40 @@ public class PlanDAO implements IDAO<Plan> {
     public void delete(Long id) {
         try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
-            Plan plan = em.find(Plan.class, id);
-            if (plan != null) {
-                em.remove(plan);
+            Product product = em.find(Product.class, id);
+            if (product != null) {
+                em.remove(product);
             }
             em.getTransaction().commit();
         }
     }
 
     @Override
-    public Optional<Plan> findByName(String name) {
+    public Optional<Product> findByName(String name) {
         try (EntityManager em = emf.createEntityManager()) {
-            Plan plan = em.createQuery("SELECT p FROM Plan p WHERE p.name = :name", Plan.class)
+            Product product = em.createQuery("SELECT p FROM Product p WHERE p.name = :name", Product.class)
                     .setParameter("name", name)
                     .getSingleResult();
-            return Optional.of(plan);
+            return Optional.of(product);
         } catch (NoResultException e) {
             return Optional.empty();
         }
     }
 
     /**
-     * Get all active plans
+     * Get all products by type
      */
-    public Set<Plan> getAllActivePlans() {
+    public Set<Product> getByType(ProductType type) {
         try (EntityManager em = emf.createEntityManager()) {
-            return em.createQuery("SELECT p FROM Plan p WHERE p.active = true", Plan.class)
+            return em.createQuery(
+                    "SELECT p FROM Product p WHERE p.productType = :type",
+                    Product.class
+            )
+                    .setParameter("type", type)
                     .getResultList()
                     .stream()
                     .collect(Collectors.toSet());
         }
     }
 }
+

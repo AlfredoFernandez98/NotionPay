@@ -2,7 +2,6 @@ package dat.entities;
 
 import dat.enums.Status;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -40,4 +39,15 @@ public class SerialLink {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
+    public SerialLink(Customer customer, Integer serialNumber, Plan plan, Status status, 
+                     String externalProof, OffsetDateTime verifiedAt, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+        this.customer = customer;
+        this.serialNumber = serialNumber;
+        this.plan = plan;
+        this.status = status;
+        this.externalProof = externalProof;
+        this.verifiedAt = verifiedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 }

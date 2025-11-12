@@ -14,12 +14,27 @@ import java.time.OffsetDateTime;
 /**
  * Service to verify serial numbers using SerialLink entity
  * More sophisticated than PreRegistrationData - includes Plan eligibility
+ * Follows Singleton pattern with getInstance()
  */
 public class SerialLinkVerificationService {
-    private EntityManagerFactory emf;
+    private static SerialLinkVerificationService instance;
+    private static EntityManagerFactory emf;
 
-    public SerialLinkVerificationService(EntityManagerFactory emf) {
-        this.emf = emf;
+    /**
+     * Get singleton instance of SerialLinkVerificationService
+     * @param _emf EntityManagerFactory to use
+     * @return SerialLinkVerificationService instance
+     */
+    public static SerialLinkVerificationService getInstance(EntityManagerFactory _emf) {
+        if (instance == null) {
+            emf = _emf;
+            instance = new SerialLinkVerificationService();
+        }
+        return instance;
+    }
+
+    private SerialLinkVerificationService() {
+        // Private constructor for singleton
     }
 
     /**
@@ -28,8 +43,7 @@ public class SerialLinkVerificationService {
      * @return true if valid and pending, false otherwise
      */
     public boolean verifySerialNumber(Integer serialNumber) {
-        EntityManager em = emf.createEntityManager();
-        try {
+        try (EntityManager em = emf.createEntityManager()) {
             TypedQuery<SerialLink> query = em.createQuery(
                 "SELECT s FROM SerialLink s WHERE s.serialNumber = :serialNumber AND s.status = :status",
                 SerialLink.class
@@ -44,8 +58,6 @@ public class SerialLinkVerificationService {
             
         } catch (NoResultException e) {
             return false;
-        } finally {
-            em.close();
         }
     }
 
@@ -55,8 +67,7 @@ public class SerialLinkVerificationService {
      * @param customer The customer to link
      */
     public void linkCustomerToSerialLink(Integer serialNumber, Customer customer) {
-        EntityManager em = emf.createEntityManager();
-        try {
+        try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
             
             TypedQuery<SerialLink> query = em.createQuery(
@@ -76,14 +87,6 @@ public class SerialLinkVerificationService {
             
             em.merge(serialLink);
             em.getTransaction().commit();
-            
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            throw e;
-        } finally {
-            em.close();
         }
     }
 
@@ -93,8 +96,7 @@ public class SerialLinkVerificationService {
      * @return The Plan entity, or null if not found
      */
     public Plan getPlanForSerialNumber(Integer serialNumber) {
-        EntityManager em = emf.createEntityManager();
-        try {
+        try (EntityManager em = emf.createEntityManager()) {
             TypedQuery<Plan> query = em.createQuery(
                 "SELECT s.plan FROM SerialLink s WHERE s.serialNumber = :serialNumber",
                 Plan.class
@@ -105,8 +107,6 @@ public class SerialLinkVerificationService {
             
         } catch (NoResultException e) {
             return null;
-        } finally {
-            em.close();
         }
     }
 
@@ -116,8 +116,7 @@ public class SerialLinkVerificationService {
      * @return The SerialLink entity, or null if not found
      */
     public SerialLink getSerialLink(Integer serialNumber) {
-        EntityManager em = emf.createEntityManager();
-        try {
+        try (EntityManager em = emf.createEntityManager()) {
             TypedQuery<SerialLink> query = em.createQuery(
                 "SELECT s FROM SerialLink s WHERE s.serialNumber = :serialNumber",
                 SerialLink.class
@@ -128,9 +127,6 @@ public class SerialLinkVerificationService {
             
         } catch (NoResultException e) {
             return null;
-        } finally {
-            em.close();
         }
     }
 }
-

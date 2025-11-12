@@ -11,16 +11,17 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dat.config.HibernateConfig;
+import dat.daos.impl.CustomerDAO;
 import dat.dtos.RegisterRequest;
+import dat.entities.Customer;
 import dat.entities.Plan;
+import dat.entities.SerialLink;
 import dat.security.daos.ISecurityDAO;
 import dat.security.daos.SecurityDAO;
 import dat.security.dtos.UserDTO;
 import dat.security.entities.User;
 import dat.security.exceptions.ApiException;
 import dat.security.exceptions.ValidationException;
-// TODO: Add SerialLinkVerificationService when implementing CustomerDAO
-// import dat.services.SerialLinkVerificationService;
 import dat.services.SerialLinkVerificationService;
 import dat.utils.Utils;
 import io.javalin.http.Handler;
@@ -39,6 +40,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+
+
 /**
  * Purpose: To handle security in the API
  * Author: Thomas Hartmann
@@ -49,20 +52,18 @@ public class SecurityController implements ISecurityController {
     private static SecurityController instance;
     private static Logger logger = LoggerFactory.getLogger(SecurityController.class);
     
-    // TODO: Add these when implementing SerialLink integration (see SERIAL_LINK_INTEGRATION_GUIDE.md)
-    // private SerialLinkVerificationService serialLinkService;
-    // private CustomerDAO customerDAO;
+    private SerialLinkVerificationService serialLinkService;
+    private CustomerDAO customerDAO;
 
     private SecurityController() { }
 
-    public static SecurityController getInstance() { // Singleton because we don't want multiple instances of the same class
+    public static SecurityController getInstance() {
         if (instance == null) {
             instance = new SecurityController();
         }
         securityDAO = new SecurityDAO(HibernateConfig.getEntityManagerFactory());
-        // TODO: Initialize SerialLinkVerificationService and CustomerDAO here
-        // instance.serialLinkService = new SerialLinkVerificationService(HibernateConfig.getEntityManagerFactory());
-        // instance.customerDAO = new CustomerDAO(HibernateConfig.getEntityManagerFactory());
+        instance.serialLinkService = SerialLinkVerificationService.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.customerDAO = CustomerDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         return instance;
     }
 
@@ -92,32 +93,62 @@ public class SecurityController implements ISecurityController {
         return (ctx) -> {
             ObjectNode returnObject = objectMapper.createObjectNode();
             try {
-
                 RegisterRequest registerRequest = ctx.bodyAsClass(RegisterRequest.class);
-                SerialLinkVerificationService serialLinkVerificationService = ctx.bodyAsClass(SerialLinkVerificationService.class);
 
-                boolean isValid = serialLinkVerificationService.verifySerialNumber(registerRequest.serialNumber);
-                if (!isValid){
-                    ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
-                    ctx.json(returnObject.put("msg", "Invalid Serial Number"));
+                // Step 1: Verify serial number exists and is available
+                boolean isValid = serialLinkService.verifySerialNumber(registerRequest.serialNumber);
+                if (!isValid) {
+                    ctx.status(HttpStatus.FORBIDDEN);
+                    ctx.json(returnObject.put("msg", "Invalid or already used serial number"));
+                    logger.warn("Registration failed: Invalid serial number {}", registerRequest.serialNumber);
                     return;
                 }
-                Plan eligiblePlan = serialLinkVerificationService.getPlanForSerialNumber(registerRequest.serialNumber);
 
+                // Step 2: Get the Plan associated with this serial number
+                Plan eligiblePlan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
+                if (eligiblePlan == null) {
+                    ctx.status(HttpStatus.INTERNAL_SERVER_ERROR);
+                    ctx.json(returnObject.put("msg", "Could not find plan for serial number"));
+                    logger.error("Plan not found for valid serial number {}", registerRequest.serialNumber);
+                    return;
+                }
+
+                // Step 3: Get the full SerialLink entity
+                SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
                 
-                // Create user (no verification for now)
-                User created = securityDAO.createUser(registerRequest.email, registerRequest.password);
+                // Step 4: Create User
+                User user = securityDAO.createUser(registerRequest.email, registerRequest.password);
+                logger.info("User created: {}", user.getEmail());
                 
-                // Create JWT token
-                String token = createToken(new UserDTO(created.getEmail(), Set.of("USER")));
-                ctx.status(HttpStatus.CREATED).json(returnObject
+                // Step 5: Create Customer (linked to User and serial number)
+                Customer customer = customerDAO.createCustomer(
+                    user, 
+                    registerRequest.companyName, 
+                    registerRequest.serialNumber
+                );
+                logger.info("Customer created: {} with serial {}", customer.getCompanyName(), customer.getSerialNumber());
+                
+                // Step 6: Link Customer to SerialLink (marks as VERIFIED)
+                serialLinkService.linkCustomerToSerialLink(registerRequest.serialNumber, customer);
+                logger.info("SerialLink {} verified and linked to customer {}", registerRequest.serialNumber, customer.getId());
+                
+                // Step 7: Create JWT token
+                String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
+                
+                // Step 8: Return success response
+                ctx.status(HttpStatus.CREATED).json(objectMapper.createObjectNode()
                         .put("token", token)
-                        .put("email", created.getEmail())
-                        .put("msg", "Registration successful - TODO: Add SerialLink verification"));
+                        .put("email", user.getEmail())
+                        .put("customerId", customer.getId())
+                        .put("serialLinkId", serialLink.getId())
+                        .put("planId", eligiblePlan.getId())
+                        .put("planName", eligiblePlan.getName())
+                        .put("msg", "Registration successful! You are subscribed to " + eligiblePlan.getName()));
                         
             } catch (EntityExistsException e) {
                 ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
-                ctx.json(returnObject.put("msg", "User already exists"));
+                ctx.json(returnObject.put("msg", "User with this email already exists"));
+                logger.warn("Registration failed: User already exists");
             } catch (Exception e) {
                 ctx.status(HttpStatus.INTERNAL_SERVER_ERROR);
                 ctx.json(returnObject.put("msg", "Registration failed: " + e.getMessage()));
@@ -128,8 +159,6 @@ public class SecurityController implements ISecurityController {
 
     @Override
     public Handler authenticate() throws UnauthorizedResponse {
-
-        ObjectNode returnObject = objectMapper.createObjectNode();
         return (ctx) -> {
             // This is a preflight request => OK
             if (ctx.method().toString().equals("OPTIONS")) {
@@ -249,13 +278,10 @@ public class SecurityController implements ISecurityController {
                 // We need to get the role from the body and the email from the token
                 String newRole = ctx.bodyAsClass(ObjectNode.class).get("role").asText();
                 UserDTO user = ctx.attribute("user");
-                User updatedUser = securityDAO.addRole(user, newRole);
+                securityDAO.addRole(user, newRole);
                 ctx.status(200).json(returnObject.put("msg", "Role " + newRole + " added to user"));
             } catch (EntityNotFoundException e) {
                 ctx.status(404).json("{\"msg\": \"User not found\"}");
-
-
-                
             }
         };
     }
