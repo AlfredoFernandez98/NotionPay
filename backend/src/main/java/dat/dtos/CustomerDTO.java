@@ -7,6 +7,6 @@ public class CustomerDTO {
     public String email;  // from User
     public String companyName;
     public Integer serialNumber;
-    public String externalCustomerId;
+    public String externalCustomerId;  // READ-ONLY: Populated from SerialLink (external system)
     public OffsetDateTime createdAt;
 }

@@ -3,6 +3,7 @@ package dat.mockdatabase;
 import dat.config.HibernateConfig;
 import dat.entities.Plan;
 import dat.entities.SerialLink;
+import dat.entities.SmsBalance;
 import dat.enums.Currency;
 import dat.enums.Period;
 import dat.enums.Status;
@@ -76,6 +77,7 @@ public class SerialLinkMigration {
             serial1.setPlan(basicPlan);
             serial1.setStatus(Status.PENDING);
             serial1.setCustomer(null); // No customer yet
+            serial1.setExternalCustomerId("cus_external_ellab_001"); // From external payment system
             serial1.setExternalProof("Pre-registered via External System");
             serial1.setCreatedAt(OffsetDateTime.now());
             em.persist(serial1);
@@ -86,6 +88,7 @@ public class SerialLinkMigration {
             serial2.setPlan(proPlan);
             serial2.setStatus(Status.PENDING);
             serial2.setCustomer(null);
+            serial2.setExternalCustomerId("cus_external_notion_002"); // From external payment system
             serial2.setExternalProof("Pre-registered via External System");
             serial2.setCreatedAt(OffsetDateTime.now());
             em.persist(serial2);
@@ -96,6 +99,7 @@ public class SerialLinkMigration {
             serial3.setPlan(enterprisePlan);
             serial3.setStatus(Status.PENDING);
             serial3.setCustomer(null);
+            serial3.setExternalCustomerId("cus_external_startup_003"); // From external payment system
             serial3.setExternalProof("Pre-registered via External System");
             serial3.setCreatedAt(OffsetDateTime.now());
             em.persist(serial3);
@@ -106,6 +110,7 @@ public class SerialLinkMigration {
             serial4.setPlan(basicPlan);
             serial4.setStatus(Status.VERIFIED);
             serial4.setCustomer(null); // Would be linked to a customer in real scenario
+            serial4.setExternalCustomerId("cus_external_bbb_004"); // From external payment system
             serial4.setVerifiedAt(OffsetDateTime.now().minusDays(7));
             serial4.setExternalProof("Already verified in external system");
             serial4.setCreatedAt(OffsetDateTime.now().minusDays(30));
@@ -117,6 +122,7 @@ public class SerialLinkMigration {
             serial5.setPlan(basicPlan);
             serial5.setStatus(Status.REJECTED);
             serial5.setCustomer(null);
+            serial5.setExternalCustomerId("cus_external_rejected_005"); // From external payment system
             serial5.setExternalProof("Rejected due to invalid external verification");
             serial5.setCreatedAt(OffsetDateTime.now().minusDays(15));
             em.persist(serial5);
@@ -160,15 +166,16 @@ public class SerialLinkMigration {
         
         try {
             em.getTransaction().begin();
+            em.createQuery("DELETE FROM SmsBalance").executeUpdate();
             em.createQuery("DELETE FROM SerialLink").executeUpdate();
             em.createQuery("DELETE FROM Plan").executeUpdate();
             em.getTransaction().commit();
-            System.out.println(" All SerialLinks and Plans cleared");
+            System.out.println("✅ All SerialLinks, Plans, and SMS Balances cleared");
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
-            System.err.println(" Failed to clear data: " + e.getMessage());
+            System.err.println("❌ Failed to clear data: " + e.getMessage());
             throw new RuntimeException("Clear failed", e);
         } finally {
             em.close();
