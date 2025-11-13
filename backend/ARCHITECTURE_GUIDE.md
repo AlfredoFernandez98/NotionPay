@@ -817,23 +817,4 @@ ctx.json(Map.of("error", "Bad request"));
 6. **Controller** = HTTP handler (receives requests, returns responses)
 7. **DTO** = Safe data transfer (no sensitive info)
 
----
-
-## 🧪 Testing Your Understanding
-
-Try to answer these questions:
-
-1. **Why do we close EntityManager but not EntityManagerFactory?**
-2. **What's the difference between `em.persist()` and `em.merge()`?**
-3. **Why use DTO instead of sending Entity directly?**
-4. **When should logic go in Service vs DAO?**
-5. **What happens if you forget `@Transactional` or begin/commit?**
-
-*(Answers in your head - review sections above if unsure!)*
-
----
-
-**Take your time with this guide. Read it section by section. Try to connect it with YOUR code.** 
-
-**When you're ready, we'll move to the next step!** 🚀
 
