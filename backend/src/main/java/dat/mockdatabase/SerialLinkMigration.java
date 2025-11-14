@@ -14,17 +14,23 @@ import java.time.OffsetDateTime;
 
 /**
  * Mock Database Migration for SerialLink
- * Purpose: Simulates serial numbers from external database with Plan eligibility
- * This is more sophisticated than PreRegistrationData
+ * 
+ * Purpose: Simulates serial numbers from external database (e.g., SMS provider)
+ * Each SerialLink represents a pre-registered company that can sign up
+ * 
+ * Key Data: serialNumber + expectedEmail + Plan
+ * Registration flow: User enters email + serialNumber → System validates both match
  */
 public class SerialLinkMigration {
 
     /**
-     * Populate SerialLinks with associated Plans
+     * Populate SerialLinks with Plans and Expected Emails
+     * This simulates an external database of pre-registered companies
      */
     public static void populateSerialLinksAndPlans() {
-        System.out.println("\n Populating SerialLinks with Plans (Simulating External DB)");
-        System.out.println("-".repeat(60));
+        System.out.println("\n═══════════════════════════════════════════════════════════");
+        System.out.println("  🔧 Populating SerialLinks (Simulating External Database)");
+        System.out.println("═══════════════════════════════════════════════════════════");
 
         EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory();
         EntityManager em = emf.createEntityManager();
@@ -32,127 +38,110 @@ public class SerialLinkMigration {
         try {
             em.getTransaction().begin();
             
-            // ========== CREATE PLANS FIRST ==========
+            // ===== STEP 1: CREATE PLANS =====
+            System.out.println("\n📋 Creating Plans...");
             
-            // Plan 1: Basic Monthly Plan
-            Plan basicPlan = new Plan();
-            basicPlan.setName("Basic Monthly");
-            basicPlan.setPeriod(Period.MONTHLY);
-            basicPlan.setPriceCents(49900); // 499 DKK
-            basicPlan.setCurrency(Currency.DKK);
-            basicPlan.setDescription("Basic features with monthly billing");
-            basicPlan.setActive(true);
-            em.persist(basicPlan);
+            Plan basicPlan = createPlan(em, "Basic Monthly", Period.MONTHLY, 49900, "Basic features");
+            Plan proPlan = createPlan(em, "Professional Monthly", Period.MONTHLY, 99900, "Professional features");
+            Plan enterprisePlan = createPlan(em, "Enterprise Yearly", Period.YEARLY, 999900, "Enterprise features");
             
-            // Plan 2: Professional Monthly Plan
-            Plan proPlan = new Plan();
-            proPlan.setName("Professional Monthly");
-            proPlan.setPeriod(Period.MONTHLY);
-            proPlan.setPriceCents(99900); // 999 DKK
-            proPlan.setCurrency(Currency.DKK);
-            proPlan.setDescription("Professional features with monthly billing");
-            proPlan.setActive(true);
-            em.persist(proPlan);
+            System.out.println("✅ Plans created:");
+            System.out.println("   • Basic Monthly (499 DKK/month)");
+            System.out.println("   • Professional Monthly (999 DKK/month)");
+            System.out.println("   • Enterprise Yearly (9999 DKK/year)");
             
-            // Plan 3: Enterprise Yearly Plan
-            Plan enterprisePlan = new Plan();
-            enterprisePlan.setName("Enterprise Yearly");
-            enterprisePlan.setPeriod(Period.YEARLY);
-            enterprisePlan.setPriceCents(999900); // 9999 DKK
-            enterprisePlan.setCurrency(Currency.DKK);
-            enterprisePlan.setDescription("Enterprise features with yearly billing");
-            enterprisePlan.setActive(true);
-            em.persist(enterprisePlan);
+            // ===== STEP 2: CREATE SERIAL LINKS (Pre-registered companies) =====
+            System.out.println("\n📋 Creating SerialLinks (Pre-registered Companies)...");
             
-            System.out.println("✅ Created 3 Plans:");
-            System.out.println("   - Basic Monthly (499 DKK/month)");
-            System.out.println("   - Professional Monthly (999 DKK/month)");
-            System.out.println("   - Enterprise Yearly (9999 DKK/year)");
+            // Example 1: Company A - can register with this email + serial
+            createSerialLink(em, basicPlan, 101010101, "alice@company-a.com", "cus_ext_a_001");
             
-            // ========== CREATE SERIAL LINKS ==========
+            // Example 2: Company B - can register with this email + serial
+            createSerialLink(em, proPlan, 404040404, "bob@company-b.com", "cus_ext_b_002");
             
-            // SerialLink 1: Ellab A/S - Basic Plan - AVAILABLE
-            SerialLink serial1 = new SerialLink();
-            serial1.setSerialNumber(101010101);
-            serial1.setPlan(basicPlan);
-            serial1.setStatus(Status.PENDING);
-            serial1.setCustomer(null); // No customer yet
-            serial1.setExternalCustomerId("cus_external_ellab_001"); // From external payment system
-            serial1.setExternalProof("Pre-registered via External System");
-            serial1.setCreatedAt(OffsetDateTime.now());
-            em.persist(serial1);
+            // Example 3: Company C - can register with this email + serial
+            createSerialLink(em, enterprisePlan, 505050505, "charlie@company-c.com", "cus_ext_c_003");
             
-            // SerialLink 2: Notion Technologies - Professional Plan - AVAILABLE
-            SerialLink serial2 = new SerialLink();
-            serial2.setSerialNumber(404040404);
-            serial2.setPlan(proPlan);
-            serial2.setStatus(Status.PENDING);
-            serial2.setCustomer(null);
-            serial2.setExternalCustomerId("cus_external_notion_002"); // From external payment system
-            serial2.setExternalProof("Pre-registered via External System");
-            serial2.setCreatedAt(OffsetDateTime.now());
-            em.persist(serial2);
+            // Example 4: Already verified (used for testing edge cases)
+            SerialLink verifiedSerial = createSerialLink(em, basicPlan, 202020202, "diana@company-d.com", "cus_ext_d_004");
+            verifiedSerial.setStatus(Status.VERIFIED);
+            verifiedSerial.setVerifiedAt(OffsetDateTime.now().minusDays(7));
+            em.merge(verifiedSerial);
             
-            // SerialLink 3: Startup Denmark - Enterprise Plan - AVAILABLE
-            SerialLink serial3 = new SerialLink();
-            serial3.setSerialNumber(505050505);
-            serial3.setPlan(enterprisePlan);
-            serial3.setStatus(Status.PENDING);
-            serial3.setCustomer(null);
-            serial3.setExternalCustomerId("cus_external_startup_003"); // From external payment system
-            serial3.setExternalProof("Pre-registered via External System");
-            serial3.setCreatedAt(OffsetDateTime.now());
-            em.persist(serial3);
-            
-            // SerialLink 4: BBB ApS - Basic Plan - ALREADY VERIFIED (for testing)
-            SerialLink serial4 = new SerialLink();
-            serial4.setSerialNumber(202020202);
-            serial4.setPlan(basicPlan);
-            serial4.setStatus(Status.VERIFIED);
-            serial4.setCustomer(null); // Would be linked to a customer in real scenario
-            serial4.setExternalCustomerId("cus_external_bbb_004"); // From external payment system
-            serial4.setVerifiedAt(OffsetDateTime.now().minusDays(7));
-            serial4.setExternalProof("Already verified in external system");
-            serial4.setCreatedAt(OffsetDateTime.now().minusDays(30));
-            em.persist(serial4);
-            
-            // SerialLink 5: Rejected Serial (for testing)
-            SerialLink serial5 = new SerialLink();
-            serial5.setSerialNumber(999999999);
-            serial5.setPlan(basicPlan);
-            serial5.setStatus(Status.REJECTED);
-            serial5.setCustomer(null);
-            serial5.setExternalCustomerId("cus_external_rejected_005"); // From external payment system
-            serial5.setExternalProof("Rejected due to invalid external verification");
-            serial5.setCreatedAt(OffsetDateTime.now().minusDays(15));
-            em.persist(serial5);
+            // Example 5: Rejected serial (for testing)
+            SerialLink rejectedSerial = createSerialLink(em, basicPlan, 999999999, "eve@company-e.com", "cus_ext_e_005");
+            rejectedSerial.setStatus(Status.REJECTED);
+            em.merge(rejectedSerial);
             
             em.getTransaction().commit();
             
-            // Print summary
-            System.out.println("\n Created 5 SerialLink records:");
-            System.out.println("\n AVAILABLE FOR REGISTRATION (Status: PENDING):");
-            System.out.println("   1. Serial: 101010101 → Basic Monthly Plan");
-            System.out.println("   2. Serial: 404040404 → Professional Monthly Plan");
-            System.out.println("   3. Serial: 505050505 → Enterprise Yearly Plan");
+            // ===== PRINT SUMMARY =====
+            System.out.println("\n✅ SerialLinks Created Successfully!");
             
-            System.out.println("\n NOT AVAILABLE:");
-            System.out.println("   1. Serial: 202020202 [VERIFIED - already used]");
-            System.out.println("   2. Serial: 999999999 [REJECTED - invalid]");
+            System.out.println("\n📌 AVAILABLE FOR REGISTRATION (Status: PENDING):");
+            System.out.println("   Serial 101010101 + alice@company-a.com → Basic Monthly");
+            System.out.println("   Serial 404040404 + bob@company-b.com → Professional Monthly");
+            System.out.println("   Serial 505050505 + charlie@company-c.com → Enterprise Yearly");
             
-            System.out.println("\n SerialLink migration completed successfully");
-            System.out.println(" Each serial number is now linked to a specific Plan!");
+            System.out.println("\n⚠️  NOT AVAILABLE:");
+            System.out.println("   Serial 202020202 [VERIFIED - already registered]");
+            System.out.println("   Serial 999999999 [REJECTED - invalid]");
+            
+            System.out.println("\n💡 IMPORTANT: Email + SerialNumber must BOTH match to register!");
+            System.out.println("   Example: alice@company-a.com + 101010101 ✅");
+            System.out.println("   Example: bob@company-a.com + 101010101 ❌ (wrong email)");
+            System.out.println("═══════════════════════════════════════════════════════════\n");
             
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
-            System.err.println("\n SerialLink migration failed: " + e.getMessage());
+            System.err.println("\n❌ SerialLink migration failed: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Migration failed", e);
         } finally {
             em.close();
         }
+    }
+    
+    /**
+     * Helper method to create a Plan
+     */
+    private static Plan createPlan(EntityManager em, String name, Period period, 
+                                    int priceCents, String description) {
+        Plan plan = new Plan();
+        plan.setName(name);
+        plan.setPeriod(period);
+        plan.setPriceCents(priceCents);
+        plan.setCurrency(Currency.DKK);
+        plan.setDescription(description);
+        plan.setActive(true);
+        em.persist(plan);
+        return plan;
+    }
+    
+    /**
+     * Helper method to create a SerialLink
+     * 
+     * @param em EntityManager for persistence
+     * @param plan The plan this serial is eligible for
+     * @param serialNumber The serial number
+     * @param expectedEmail The email that must match during registration
+     * @param externalCustomerId The ID from external system
+     */
+    private static SerialLink createSerialLink(EntityManager em, Plan plan, int serialNumber,
+                                                String expectedEmail, String externalCustomerId) {
+        SerialLink serial = new SerialLink();
+        serial.setSerialNumber(serialNumber);
+        serial.setExpectedEmail(expectedEmail);  // ← Must match during registration!
+        serial.setPlan(plan);
+        serial.setStatus(Status.PENDING);
+        serial.setCustomer(null);
+        serial.setExternalCustomerId(externalCustomerId);
+        serial.setExternalProof("Pre-registered via External System");
+        serial.setCreatedAt(OffsetDateTime.now());
+        em.persist(serial);
+        return serial;
     }
     
     /**

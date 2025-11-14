@@ -23,6 +23,7 @@ public class SerialLinkVerificationService {
     /**
      * Get singleton instance of SerialLinkVerificationService
      * @param _emf EntityManagerFactory to use
+     * @param email The email to verify
      * @return SerialLinkVerificationService instance
      */
     public static SerialLinkVerificationService getInstance(EntityManagerFactory _emf) {
@@ -42,13 +43,15 @@ public class SerialLinkVerificationService {
      * @param serialNumber The serial number to verify
      * @return true if valid and pending, false otherwise
      */
-    public boolean verifySerialNumber(Integer serialNumber) {
+    public boolean verifySerialNumberAndEmail(Integer serialNumber, String email) {
         try (EntityManager em = emf.createEntityManager()) {
             TypedQuery<SerialLink> query = em.createQuery(
-                "SELECT s FROM SerialLink s WHERE s.serialNumber = :serialNumber AND s.status = :status",
-                SerialLink.class
+                    "SELECT s FROM SerialLink s WHERE s.serialNumber = :serialNumber " +
+                            "AND s.expectedEmail = :email AND s.status = :status",
+                    SerialLink.class
             );
             query.setParameter("serialNumber", serialNumber);
+            query. setParameter("email", email);
             query.setParameter("status", Status.PENDING);
             
             SerialLink serialLink = query.getSingleResult();

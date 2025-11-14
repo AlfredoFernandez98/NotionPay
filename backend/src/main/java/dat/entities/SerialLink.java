@@ -35,21 +35,25 @@ public class SerialLink {
     private Status status;
 
     @Column(name = "external_customer_id", unique = true)
-    private String externalCustomerId;  // From external system DB 
+    private String externalCustomerId;
+
+    @Column(name = "expected_email", nullable = false)
+    private String expectedEmail;         // From external system DB
 
     private OffsetDateTime verifiedAt;
     private String externalProof;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
-    public SerialLink(Customer customer, Integer serialNumber, Plan plan, Status status, 
-                     String externalCustomerId, String externalProof, OffsetDateTime verifiedAt, 
-                     OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public SerialLink(Customer customer, Integer serialNumber, Plan plan, Status status,
+                      String externalCustomerId, String expectedEmail, String externalProof,
+                      OffsetDateTime verifiedAt, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.customer = customer;
         this.serialNumber = serialNumber;
         this.plan = plan;
         this.status = status;
         this.externalCustomerId = externalCustomerId;
+        this.expectedEmail = expectedEmail;  // ← ADD THIS LINE
         this.externalProof = externalProof;
         this.verifiedAt = verifiedAt;
         this.createdAt = createdAt;

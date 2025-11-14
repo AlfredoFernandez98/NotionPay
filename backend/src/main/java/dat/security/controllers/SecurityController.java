@@ -24,6 +24,7 @@ import dat.security.exceptions.ApiException;
 import dat.security.exceptions.ValidationException;
 import dat.services.SerialLinkVerificationService;
 import dat.utils.Utils;
+import dat.utils.ValidationUtil;
 import io.javalin.http.Handler;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.UnauthorizedResponse;
@@ -95,11 +96,27 @@ public class SecurityController implements ISecurityController {
             try {
                 RegisterRequest registerRequest = ctx.bodyAsClass(RegisterRequest.class);
 
+                //Checking
+                try{
+                    ValidationUtil.isValidEmail(registerRequest.email);
+                    ValidationUtil.isValidCompanyName(registerRequest.companyName);
+                    ValidationUtil.isStrongPassword(registerRequest.password);
+                }catch (IllegalArgumentException | NullPointerException e){
+                    ctx.status(400);
+                    ctx.json(returnObject.put("msg", e.getMessage()));
+                    return;
+                }
+                if (registerRequest.serialNumber == null) {
+                    ctx.status(HttpStatus.BAD_REQUEST);
+                    ctx.json(returnObject.put("msg", "Serial number cannot be empty"));
+                    return;
+                }
+
                 // Step 1: Verify serial number exists and is available
-                boolean isValid = serialLinkService.verifySerialNumber(registerRequest.serialNumber);
+                boolean isValid = serialLinkService.verifySerialNumberAndEmail(registerRequest.serialNumber,registerRequest.email);
                 if (!isValid) {
                     ctx.status(HttpStatus.FORBIDDEN);
-                    ctx.json(returnObject.put("msg", "Invalid or already used serial number"));
+                    ctx.json(returnObject.put("msg", "Serial number and email do not match"));
                     logger.warn("Registration failed: Invalid serial number {}", registerRequest.serialNumber);
                     return;
                 }

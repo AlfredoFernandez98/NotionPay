@@ -69,10 +69,10 @@ public class CustomerController implements IController{
                 return;
             }
 
-            boolean isSerialValid = serialLinkService.verifySerialNumber(dto.serialNumber);
-            if (!isSerialValid) {
+            boolean isSerialValidAndEmail = serialLinkService.verifySerialNumberAndEmail(dto.serialNumber,dto.email);
+            if (!isSerialValidAndEmail) {
                 ctx.status(403);
-                ctx.json("Invalid serial number is already used: " + dto.serialNumber);
+                ctx.json("Invalid serial number is already used and Email: ");
                 return;
             }
 

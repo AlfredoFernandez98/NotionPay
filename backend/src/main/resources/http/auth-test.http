@@ -1,0 +1,69 @@
+### Test 1: Valid Registration
+POST http://localhost:7070/api/auth/register
+
+/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "SecurePass123",
+  "companyName": "Acme Corp",
+  "serialNumber": "101010101"
+}
+
+### Test 2: Invalid Email Format
+POST http://localhost:7070/api/auth/register
+
+/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "notanemail",
+  "password": "SecurePass123",
+  "companyName": "Acme Corp",
+  "serialNumber": "101010101"
+}
+
+### Test 3: Weak Password (less than 8 chars)
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john1@example.com",
+  "password": "weak",
+  "companyName": "Acme Corp",
+  "serialNumber": "101010101"
+}
+
+### Test 4: Weak Password (no digits)
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "onlyletters",
+  "companyName": "Acme Corp",
+  "serialNumber": "404040404"
+}
+
+### Test 5: Empty Company Name
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "SecurePass123",
+  "companyName": "",
+  "serialNumber": "101010101"
+}
+
+### Test 6: Company Name Too Long (>100 chars)
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "SecurePass123",
+  "companyName": "This is a very long company name that exceeds one hundred characters in total length for testing purposes only",
+  "serialNumber": "101010101"
+}
