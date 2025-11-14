@@ -150,6 +150,42 @@ public class CustomerController implements IController{
      * GET /api/customers/{id}/sms-balance
      * Fetch SMS balance from external SMS provider DB
      */
-    
+    public void getSmsBalance(Context ctx) {
+        try {
+            Long customerId = Long.parseLong(ctx.pathParam("id"));
+            
+            // Get customer to find their external_customer_id
+            Optional<Customer> customer = customerDAO.getById(customerId);
+            if (customer.isEmpty()) {
+                ctx.status(404);
+                ctx.json("Customer not found with ID: " + customerId);
+                return;
+            }
+            
+            String externalCustomerId = customer.get().getExternalCustomerId();
+            if (externalCustomerId == null || externalCustomerId.isEmpty()) {
+                ctx.status(404);
+                ctx.json("Customer has no external_customer_id linked");
+                return;
+            }
+            
+            // Get SMS balance using external_customer_id
+            Optional<SmsBalance> balance = smsBalanceDAO.getByExternalCustomerId(externalCustomerId);
+            
+            if (balance.isPresent()) {
+                ctx.status(200);
+                ctx.json(balance.get());
+            } else {
+                ctx.status(404);
+                ctx.json("SMS balance not found for external customer ID: " + externalCustomerId);
+            }
+        } catch (NumberFormatException e) {
+            ctx.status(400);
+            ctx.json("Invalid customer ID format");
+        } catch (Exception e) {
+            ctx.status(500);
+            ctx.json("Error fetching SMS balance: " + e.getMessage());
+        }
+    }
 
 }

@@ -36,32 +36,55 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
 
     @Override
     public SmsBalance create(SmsBalance smsBalance) {
-       
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            em.persist(smsBalance);
+            em.getTransaction().commit();
+            return smsBalance;
+        }
     }
 
     @Override
     public Optional<SmsBalance> getById(Long id) {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            SmsBalance balance = em.find(SmsBalance.class, id);
+            return Optional.ofNullable(balance);
+        }
     }
 
     @Override
     public Set<SmsBalance> getAll() {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery("SELECT s FROM SmsBalance s", SmsBalance.class)
+                    .getResultStream()
+                    .collect(Collectors.toSet());
+        }
     }
 
     @Override
     public void update(SmsBalance smsBalance) {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            em.merge(smsBalance);
+            em.getTransaction().commit();
+        }
     }
 
     @Override
     public void delete(Long id) {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            SmsBalance balance = em.find(SmsBalance.class, id);
+            if (balance != null) {
+                em.remove(balance);
+            }
+            em.getTransaction().commit();
+        }
     }
 
     @Override
     public Optional<SmsBalance> findByName(String name) {
-        
+        return Optional.empty(); // SmsBalance doesn't have a name field
     }
 
     // ========== CUSTOM BUSINESS METHODS ==========
@@ -71,20 +94,54 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
      * This is how we link Customer to SMS Balance
      */
     public Optional<SmsBalance> getByExternalCustomerId(String externalCustomerId) {
-       
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT s FROM SmsBalance s WHERE s.externalCustomerId = :externalId",
+                    SmsBalance.class)
+                    .setParameter("externalId", externalCustomerId)
+                    .getResultStream()
+                    .findFirst();
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
     }
 
     /**
      * Use SMS credits for a customer
      */
     public boolean useSmsCredits(String externalCustomerId, int count) {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            Optional<SmsBalance> balanceOpt = getByExternalCustomerId(externalCustomerId);
+            
+            if (balanceOpt.isPresent()) {
+                SmsBalance balance = balanceOpt.get();
+                boolean success = balance.useSms(count);
+                if (success) {
+                    em.merge(balance);
+                    em.getTransaction().commit();
+                    return true;
+                }
+            }
+            em.getTransaction().rollback();
+            return false;
+        }
     }
 
     /**
      * Recharge SMS credits for a customer
      */
     public void rechargeSmsCredits(String externalCustomerId, int credits) {
-        
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            Optional<SmsBalance> balanceOpt = getByExternalCustomerId(externalCustomerId);
+            
+            if (balanceOpt.isPresent()) {
+                SmsBalance balance = balanceOpt.get();
+                balance.recharge(credits);
+                em.merge(balance);
+            }
+            em.getTransaction().commit();
+        }
     }
 }
