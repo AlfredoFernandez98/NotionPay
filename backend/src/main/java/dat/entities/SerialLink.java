@@ -1,14 +1,14 @@
 package dat.entities;
 
-import dat.enums.Status;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-
-import java.time.OffsetDateTime;
-
+/**
+ * Lookup table linking serial numbers to external customer IDs and initial SMS balance
+ * Used during registration to validate and provide initial credits
+ */
 @Entity
 @Getter
 @Setter
@@ -18,45 +18,28 @@ public class SerialLink {
     @Id
     @GeneratedValue
     private Long id;
-
-    @ManyToOne(optional = true)  // Changed: optional during pre-registration
-    @JoinColumn(name = "customer_id", nullable = true)  // Changed: nullable before customer creation
-    private Customer customer;
     
-    @Column(unique = true)  // Added: serial numbers should be unique
+    @Column(name = "serial_number", unique = true, nullable = false)
     private Integer serialNumber;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "plan_id", nullable = false)
-    private Plan plan;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Status status;
-
-    @Column(name = "external_customer_id", unique = true)
+    @Column(name = "external_customer_id", unique = true, nullable = false)
     private String externalCustomerId;
 
     @Column(name = "expected_email", nullable = false)
-    private String expectedEmail;         // From external system DB
+    private String expectedEmail;
+    
+    @Column(name = "plan_name", nullable = false)
+    private String planName;
+    
+    @Column(name = "initial_sms_balance", nullable = false)
+    private Integer initialSmsBalance; // Fake SMS balance the customer gets
 
-    private OffsetDateTime verifiedAt;
-    private String externalProof;
-    private OffsetDateTime createdAt;
-    private OffsetDateTime updatedAt;
-
-    public SerialLink(Customer customer, Integer serialNumber, Plan plan, Status status,
-                      String externalCustomerId, String expectedEmail, String externalProof,
-                      OffsetDateTime verifiedAt, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
-        this.customer = customer;
+    public SerialLink(Integer serialNumber, String externalCustomerId, String expectedEmail, 
+                     String planName, Integer initialSmsBalance) {
         this.serialNumber = serialNumber;
-        this.plan = plan;
-        this.status = status;
         this.externalCustomerId = externalCustomerId;
-        this.expectedEmail = expectedEmail;  // ← ADD THIS LINE
-        this.externalProof = externalProof;
-        this.verifiedAt = verifiedAt;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.expectedEmail = expectedEmail;
+        this.planName = planName;
+        this.initialSmsBalance = initialSmsBalance;
     }
 }

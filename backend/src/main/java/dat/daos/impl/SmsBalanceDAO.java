@@ -90,8 +90,7 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
     // ========== CUSTOM BUSINESS METHODS ==========
 
     /**
-     * Get SMS Balance by external_customer_id (KEY METHOD!)
-     * This is how we link Customer to SMS Balance
+     * Get SMS Balance by external_customer_id
      */
     public Optional<SmsBalance> getByExternalCustomerId(String externalCustomerId) {
         try (EntityManager em = emf.createEntityManager()) {

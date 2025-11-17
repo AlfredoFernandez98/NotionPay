@@ -3,10 +3,14 @@ package dat.controllers.impl;
 import dat.controllers.IController;
 import dat.daos.impl.CustomerDAO;
 import dat.daos.impl.SmsBalanceDAO;
+import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.CustomerDTO;
 import dat.entities.Customer;
 import dat.entities.Plan;
 import dat.entities.SmsBalance;
+import dat.entities.Subscription;
+import dat.enums.AnchorPolicy;
+import dat.enums.SubscriptionStatus;
 import dat.security.daos.SecurityDAO;
 import dat.security.dtos.UserDTO;
 import dat.security.entities.User;
@@ -17,6 +21,7 @@ import jakarta.persistence.EntityManagerFactory;
 import lombok.Getter;
 import org.eclipse.jetty.server.Authentication;
 
+import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.Optional;
 
@@ -24,6 +29,7 @@ public class CustomerController implements IController{
 
     private final CustomerDAO customerDAO;
     private final SmsBalanceDAO smsBalanceDAO;
+    private final SubscriptionDAO subscriptionDAO;
     private final SerialLinkVerificationService serialLinkService;
     private final EntityManagerFactory emf;
 
@@ -31,6 +37,7 @@ public class CustomerController implements IController{
     public CustomerController(EntityManagerFactory emf, SerialLinkVerificationService serialLinkService) {
         this.customerDAO = CustomerDAO.getInstance(emf);
         this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
+        this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
         this.serialLinkService = serialLinkService.getInstance(emf);
         this.emf = emf;
 
@@ -84,7 +91,7 @@ public class CustomerController implements IController{
                 return;
             }
 
-            // 5. Get full SerialLink (contains external_customer_id)
+            // 5. Get SerialLink to fetch external_customer_id
             dat.entities.SerialLink serialLink = serialLinkService.getSerialLink(dto.serialNumber);
             if (serialLink == null) {
                 ctx.status(500);
@@ -92,7 +99,7 @@ public class CustomerController implements IController{
                 return;
             }
 
-            // 6. Get User from database
+            // 6. Get User
             User user = getUserByEmail(dto.email);
             if (user == null) {
                 ctx.status(400);
@@ -100,26 +107,46 @@ public class CustomerController implements IController{
                 return;
             }
 
-            // 7. Check if customer already exists for this user
+            // 7. Check if customer already exists
             if(customerDAO.getByUserEmail(dto.email).isPresent()){
                 ctx.status(409);
                 ctx.json("Customer already exists with email: " + dto.email);
                 return;
             }
 
-            // 8. Create Customer with external_customer_id from SerialLink
-            Customer customer = new Customer(user, dto.companyName, dto.serialNumber);
-            customer.setExternalCustomerId(serialLink.getExternalCustomerId()); // ← FROM EXTERNAL DB!
+            // 8. Create Customer
+            Customer customer = new Customer(
+                user, 
+                dto.companyName, 
+                dto.serialNumber, 
+                serialLink.getExternalCustomerId(),
+                OffsetDateTime.now()
+            );
             Customer savedCustomer = customerDAO.create(customer);
-
-            // 9. Link Customer to SerialLink (marks as VERIFIED)
-            serialLinkService.linkCustomerToSerialLink(dto.serialNumber, savedCustomer);
             
-            // 10. Return success response
+            // 9. Create Subscription
+            Subscription subscription = new Subscription(
+                savedCustomer,
+                plan,
+                SubscriptionStatus.TRIALING,
+                OffsetDateTime.now(),
+                OffsetDateTime.now().plusMonths(1),
+                AnchorPolicy.ANNIVERSARY
+            );
+            subscriptionDAO.create(subscription);
+            
+            // 10. Create SmsBalance (from external SMS provider)
+            SmsBalance smsBalance = new SmsBalance(
+                savedCustomer.getExternalCustomerId(), 
+                serialLink.getInitialSmsBalance()
+            );
+            smsBalanceDAO.create(smsBalance);
+            
+            // 11. Return response
             ctx.status(201);
-            ctx.json("customer saved with id: " + savedCustomer.getUser().getEmail() + 
-                    " under plan: " + plan.getName() + 
-                    " (external_id: " + savedCustomer.getExternalCustomerId() + ")");
+            ctx.json("Customer saved: " + savedCustomer.getUser().getEmail() + 
+                    " | Plan: " + plan.getName() + 
+                    " | External ID: " + savedCustomer.getExternalCustomerId());
 
 
             }   catch(Exception e){
@@ -148,36 +175,31 @@ public class CustomerController implements IController{
 
     /**
      * GET /api/customers/{id}/sms-balance
-     * Fetch SMS balance from external SMS provider DB
+     * Fetch SMS balance for customer
      */
     public void getSmsBalance(Context ctx) {
         try {
             Long customerId = Long.parseLong(ctx.pathParam("id"));
             
             // Get customer to find their external_customer_id
-            Optional<Customer> customer = customerDAO.getById(customerId);
-            if (customer.isEmpty()) {
+            Optional<Customer> customerOpt = customerDAO.getById(customerId);
+            if (customerOpt.isEmpty()) {
                 ctx.status(404);
-                ctx.json("Customer not found with ID: " + customerId);
+                ctx.json("Customer not found");
                 return;
             }
             
-            String externalCustomerId = customer.get().getExternalCustomerId();
-            if (externalCustomerId == null || externalCustomerId.isEmpty()) {
-                ctx.status(404);
-                ctx.json("Customer has no external_customer_id linked");
-                return;
-            }
+            Customer customer = customerOpt.get();
             
-            // Get SMS balance using external_customer_id
-            Optional<SmsBalance> balance = smsBalanceDAO.getByExternalCustomerId(externalCustomerId);
+            // Get SMS balance by external_customer_id
+            Optional<SmsBalance> balance = smsBalanceDAO.getByExternalCustomerId(customer.getExternalCustomerId());
             
             if (balance.isPresent()) {
                 ctx.status(200);
                 ctx.json(balance.get());
             } else {
                 ctx.status(404);
-                ctx.json("SMS balance not found for external customer ID: " + externalCustomerId);
+                ctx.json("SMS balance not found for customer");
             }
         } catch (NumberFormatException e) {
             ctx.status(400);

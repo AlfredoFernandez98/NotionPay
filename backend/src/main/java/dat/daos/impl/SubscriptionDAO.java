@@ -1,9 +1,7 @@
 package dat.daos.impl;
 
 import dat.daos.IDAO;
-import dat.entities.Customer;
 import dat.entities.Subscription;
-import dat.enums.SubscriptionStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
@@ -24,8 +22,7 @@ public class SubscriptionDAO implements IDAO<Subscription> {
         return instance;
     }
 
-    private SubscriptionDAO() {
-    }
+    private SubscriptionDAO() {}
 
     @Override
     public Subscription create(Subscription subscription) {
@@ -82,37 +79,19 @@ public class SubscriptionDAO implements IDAO<Subscription> {
     }
 
     /**
-     * Get all subscriptions for a customer
-     */
-    public Set<Subscription> getByCustomer(Customer customer) {
-        try (EntityManager em = emf.createEntityManager()) {
-            return em.createQuery(
-                    "SELECT s FROM Subscription s WHERE s.customer = :customer",
-                    Subscription.class
-            )
-                    .setParameter("customer", customer)
-                    .getResultList()
-                    .stream()
-                    .collect(Collectors.toSet());
-        }
-    }
-
-    /**
      * Get active subscription for a customer
      */
-    public Optional<Subscription> getActiveSubscriptionByCustomer(Customer customer) {
+    public Optional<Subscription> getActiveSubscriptionForCustomer(Long customerId) {
         try (EntityManager em = emf.createEntityManager()) {
             Subscription subscription = em.createQuery(
-                    "SELECT s FROM Subscription s WHERE s.customer = :customer AND s.status = :status",
-                    Subscription.class
+                "SELECT s FROM Subscription s WHERE s.customer.id = :customerId AND s.status = 'ACTIVE'",
+                Subscription.class
             )
-                    .setParameter("customer", customer)
-                    .setParameter("status", SubscriptionStatus.ACTIVE)
-                    .getSingleResult();
+            .setParameter("customerId", customerId)
+            .getSingleResult();
             return Optional.of(subscription);
         } catch (NoResultException e) {
             return Optional.empty();
         }
     }
 }
-

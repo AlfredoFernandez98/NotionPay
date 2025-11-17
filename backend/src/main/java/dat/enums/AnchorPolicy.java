@@ -4,4 +4,3 @@ public enum AnchorPolicy {
     CALENDAR,
     ANNIVERSARY
 }
-

@@ -12,10 +12,16 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dat.config.HibernateConfig;
 import dat.daos.impl.CustomerDAO;
+import dat.daos.impl.SmsBalanceDAO;
+import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.RegisterRequest;
 import dat.entities.Customer;
 import dat.entities.Plan;
 import dat.entities.SerialLink;
+import dat.entities.SmsBalance;
+import dat.entities.Subscription;
+import dat.enums.AnchorPolicy;
+import dat.enums.SubscriptionStatus;
 import dat.security.daos.ISecurityDAO;
 import dat.security.daos.SecurityDAO;
 import dat.security.dtos.UserDTO;
@@ -55,6 +61,8 @@ public class SecurityController implements ISecurityController {
     
     private SerialLinkVerificationService serialLinkService;
     private CustomerDAO customerDAO;
+    private SubscriptionDAO subscriptionDAO;
+    private SmsBalanceDAO smsBalanceDAO;
 
     private SecurityController() { }
 
@@ -65,6 +73,8 @@ public class SecurityController implements ISecurityController {
         securityDAO = new SecurityDAO(HibernateConfig.getEntityManagerFactory());
         instance.serialLinkService = SerialLinkVerificationService.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.customerDAO = CustomerDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.subscriptionDAO = SubscriptionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.smsBalanceDAO = SmsBalanceDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         return instance;
     }
 
@@ -120,34 +130,45 @@ public class SecurityController implements ISecurityController {
                     logger.warn("Registration failed: Invalid serial number {}", registerRequest.serialNumber);
                     return;
                 }
-
-                // Step 2: Get the Plan associated with this serial number
-                Plan eligiblePlan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
-                if (eligiblePlan == null) {
-                    ctx.status(HttpStatus.INTERNAL_SERVER_ERROR);
-                    ctx.json(returnObject.put("msg", "Could not find plan for serial number"));
-                    logger.error("Plan not found for valid serial number {}", registerRequest.serialNumber);
-                    return;
-                }
-
-                // Step 3: Get the full SerialLink entity
-                SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
                 
-                // Step 4: Create User
+                // Get SerialLink to access initial SMS balance
+                SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
+
+                // Step 2: Create User
                 User user = securityDAO.createUser(registerRequest.email, registerRequest.password);
                 logger.info("User created: {}", user.getEmail());
                 
-                // Step 5: Create Customer (linked to User and serial number)
+                // Step 3: Create Customer
                 Customer customer = customerDAO.createCustomer(
                     user, 
                     registerRequest.companyName, 
                     registerRequest.serialNumber
                 );
-                logger.info("Customer created: {} with serial {}", customer.getCompanyName(), customer.getSerialNumber());
+                logger.info("Customer created: {} with ID: {}", customer.getCompanyName(), customer.getId());
                 
-                // Step 6: Link Customer to SerialLink (marks as VERIFIED)
-                serialLinkService.linkCustomerToSerialLink(registerRequest.serialNumber, customer);
-                logger.info("SerialLink {} verified and linked to customer {}", registerRequest.serialNumber, customer.getId());
+                // Step 4: Get Plan for subscription
+                Plan plan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
+                
+                // Step 5: Create Subscription (trial starts immediately)
+                Subscription subscription = new Subscription(
+                    customer,
+                    plan,
+                    SubscriptionStatus.TRIALING,
+                    java.time.OffsetDateTime.now(),
+                    java.time.OffsetDateTime.now().plusMonths(1),
+                    AnchorPolicy.ANNIVERSARY
+                );
+                subscriptionDAO.create(subscription);
+                logger.info("Subscription created: {} for {}", plan.getName(), customer.getCompanyName());
+                
+                // Step 6: Create SmsBalance with initial credits (from external SMS provider)
+                SmsBalance smsBalance = new SmsBalance(
+                    customer.getExternalCustomerId(), 
+                    serialLink.getInitialSmsBalance()
+                );
+                smsBalanceDAO.create(smsBalance);
+                logger.info("SMS Balance created: {} credits for external ID: {}", 
+                    serialLink.getInitialSmsBalance(), customer.getExternalCustomerId());
                 
                 // Step 7: Create JWT token
                 String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
@@ -157,10 +178,11 @@ public class SecurityController implements ISecurityController {
                         .put("token", token)
                         .put("email", user.getEmail())
                         .put("customerId", customer.getId())
-                        .put("serialLinkId", serialLink.getId())
-                        .put("planId", eligiblePlan.getId())
-                        .put("planName", eligiblePlan.getName())
-                        .put("msg", "Registration successful! You are subscribed to " + eligiblePlan.getName()));
+                        .put("subscriptionId", subscription.getId())
+                        .put("planId", plan.getId())
+                        .put("planName", plan.getName())
+                        .put("initialSmsCredits", serialLink.getInitialSmsBalance())
+                        .put("msg", "Registration successful! You are subscribed to " + plan.getName()));
                         
             } catch (EntityExistsException e) {
                 ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);

@@ -106,23 +106,28 @@ public class CustomerDAO implements IDAO<Customer> {
     // ==================== Custom Customer Methods ====================
 
     /**
-     * Create a Customer linked to a User with registration details
-     * Used during user registration with SerialLink verification
-     * @param user The User entity to link to
-     * @param companyName The company name
-     * @param serialNumber The serial number from registration
-     * @return The created Customer entity
+     * Create Customer during registration
+     * Fetches external_customer_id from SerialLink
      */
     public Customer createCustomer(User user, String companyName, Integer serialNumber) {
         try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
             
-            Customer customer = new Customer();
-            customer.setUser(user);
-            customer.setCompanyName(companyName);
-            customer.setSerialNumber(serialNumber);
-            customer.setCreatedAt(OffsetDateTime.now());
-            // externalCustomerId will be set later when Stripe integration is added
+            // Get SerialLink data
+            dat.entities.SerialLink serialLink = em.createQuery(
+                "SELECT s FROM SerialLink s WHERE s.serialNumber = :serialNumber",
+                dat.entities.SerialLink.class
+            )
+            .setParameter("serialNumber", serialNumber)
+            .getSingleResult();
+            
+            Customer customer = new Customer(
+                user, 
+                companyName, 
+                serialNumber, 
+                serialLink.getExternalCustomerId(),
+                OffsetDateTime.now()
+            );
             
             em.persist(customer);
             em.getTransaction().commit();
