@@ -1,0 +1,105 @@
+### ========================================
+### CUSTOMER ENDPOINT TESTS
+### ========================================
+### Base URL: http://localhost:7070/api
+### Make sure server is running!
+
+### ========================================
+### STEP 1: First, create a user (if not exists)
+### ========================================
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123",
+  "companyName": "Test Company",
+  "serialNumber": 101010101
+}
+
+### ========================================
+### STEP 2: Create Customer (with valid serial)
+### ========================================
+POST http://localhost:7070/api/customers/
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "companyName": "My Awesome Company",
+  "serialNumber": 202020202
+}
+
+### Expected Response:
+# 201 Created
+# "customer saved with id: testuser@example.com under plan: Pro Plan"
+
+### ========================================
+### TEST: Create Customer with INVALID serial
+### ========================================
+POST http://localhost:7070/api/customers/
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "companyName": "Another Company",
+  "serialNumber": 999999999
+}
+
+### Expected Response:
+# 403 Forbidden
+# "Invalid serial number is already used: 999999999"
+
+### ========================================
+### TEST: Create Customer with ALREADY USED serial
+### ========================================
+POST http://localhost:7070/api/customers/
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "companyName": "Yet Another Company",
+  "serialNumber": 101010101
+}
+
+### Expected Response:
+# 403 Forbidden (if serial was used in STEP 1)
+# OR 409 Conflict (if customer already exists for this user)
+
+### ========================================
+### TEST: Create Customer without User
+### ========================================
+POST http://localhost:7070/api/customers/
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "companyName": "Test Company",
+  "serialNumber": 303030303
+}
+
+### Expected Response:
+# 400 Bad Request
+# "No user found with email: nonexistent@example.com"
+
+### ========================================
+### TEST: Create Customer without company name
+### ========================================
+POST http://localhost:7070/api/customers/
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "companyName": "",
+  "serialNumber": 202020202
+}
+
+### Expected Response:
+# 400 Bad Request
+# "Customer name cannot be empty"
+
+### ========================================
+### Available Serial Numbers (from mock database):
+### ========================================
+# 101010101 - Basic Plan
+# 202020202 - Pro Plan
+# 303030303 - Enterprise Plan
