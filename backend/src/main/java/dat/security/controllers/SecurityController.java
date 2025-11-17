@@ -122,7 +122,7 @@ public class SecurityController implements ISecurityController {
                     return;
                 }
 
-                // Step 1: Verify serial number exists and is available
+                // Verify serial number and email match
                 boolean isValid = serialLinkService.verifySerialNumberAndEmail(registerRequest.serialNumber,registerRequest.email);
                 if (!isValid) {
                     ctx.status(HttpStatus.FORBIDDEN);
@@ -131,14 +131,13 @@ public class SecurityController implements ISecurityController {
                     return;
                 }
                 
-                // Get SerialLink to access initial SMS balance
                 SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
 
-                // Step 2: Create User
+                // Create User
                 User user = securityDAO.createUser(registerRequest.email, registerRequest.password);
                 logger.info("User created: {}", user.getEmail());
                 
-                // Step 3: Create Customer
+                // Create Customer (with external_customer_id from SerialLink)
                 Customer customer = customerDAO.createCustomer(
                     user, 
                     registerRequest.companyName, 
@@ -146,10 +145,10 @@ public class SecurityController implements ISecurityController {
                 );
                 logger.info("Customer created: {} with ID: {}", customer.getCompanyName(), customer.getId());
                 
-                // Step 4: Get Plan for subscription
+                // Get Plan for subscription
                 Plan plan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
                 
-                // Step 5: Create Subscription (trial starts immediately)
+                // Create Subscription with trial period
                 Subscription subscription = new Subscription(
                     customer,
                     plan,
@@ -161,7 +160,7 @@ public class SecurityController implements ISecurityController {
                 subscriptionDAO.create(subscription);
                 logger.info("Subscription created: {} for {}", plan.getName(), customer.getCompanyName());
                 
-                // Step 6: Create SmsBalance with initial credits (from external SMS provider)
+                // Create SmsBalance linked via external_customer_id
                 SmsBalance smsBalance = new SmsBalance(
                     customer.getExternalCustomerId(), 
                     serialLink.getInitialSmsBalance()
@@ -170,10 +169,10 @@ public class SecurityController implements ISecurityController {
                 logger.info("SMS Balance created: {} credits for external ID: {}", 
                     serialLink.getInitialSmsBalance(), customer.getExternalCustomerId());
                 
-                // Step 7: Create JWT token
+                // Create JWT token
                 String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
                 
-                // Step 8: Return success response
+                // Return success response
                 ctx.status(HttpStatus.CREATED).json(objectMapper.createObjectNode()
                         .put("token", token)
                         .put("email", user.getEmail())
