@@ -12,14 +12,11 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dat.config.HibernateConfig;
 import dat.daos.impl.CustomerDAO;
+import dat.daos.impl.SessionDAO;
 import dat.daos.impl.SmsBalanceDAO;
 import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.RegisterRequest;
-import dat.entities.Customer;
-import dat.entities.Plan;
-import dat.entities.SerialLink;
-import dat.entities.SmsBalance;
-import dat.entities.Subscription;
+import dat.entities.*;
 import dat.enums.AnchorPolicy;
 import dat.enums.SubscriptionStatus;
 import dat.security.daos.ISecurityDAO;
@@ -43,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
 import java.util.Date;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -60,6 +58,7 @@ public class SecurityController implements ISecurityController {
     private static Logger logger = LoggerFactory.getLogger(SecurityController.class);
     
     private SerialLinkVerificationService serialLinkService;
+    private SessionDAO sessionDAO;
     private CustomerDAO customerDAO;
     private SubscriptionDAO subscriptionDAO;
     private SmsBalanceDAO smsBalanceDAO;
@@ -72,6 +71,7 @@ public class SecurityController implements ISecurityController {
         }
         securityDAO = new SecurityDAO(HibernateConfig.getEntityManagerFactory());
         instance.serialLinkService = SerialLinkVerificationService.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.sessionDAO = SessionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.customerDAO = CustomerDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.subscriptionDAO = SubscriptionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.smsBalanceDAO = SmsBalanceDAO.getInstance(HibernateConfig.getEntityManagerFactory());
@@ -87,9 +87,26 @@ public class SecurityController implements ISecurityController {
                 UserDTO verifiedUser = securityDAO.getVerifiedUser(user.getEmail(), user.getPassword());
                 String token = createToken(verifiedUser);
 
+                // 1) Find the customer by email (you need such a method in CustomerDAO)
+                Customer customer = customerDAO.getByUserEmail(verifiedUser.getEmail())
+                      .orElseThrow(()-> new EntityNotFoundException("Customer with email " + verifiedUser.getEmail() + " not found"));
+
+                // 2) Extract expiry from token or compute same as TOKEN_EXPIRE_TIME
+                var expiresAt= java.time.OffsetDateTime.now().plusHours(2);
+
+                // 3) Get IP & User-Agent from ctx
+                String ip = ctx.req().getRemoteAddr();
+                String userAgent =  ctx.header("User-Agent");
+
+                // 4) Create a DB session
+
+                Session session = new Session(customer,token,expiresAt,ip,userAgent);
+                sessionDAO.create(session);
+
                 ctx.status(200).json(returnObject
                         .put("token", token)
-                        .put("email", verifiedUser.getEmail()));
+                        .put("email", verifiedUser.getEmail())
+                        .put("sessionID", session.getId()));
 
             } catch (EntityNotFoundException | ValidationException e) {
                 ctx.status(401);
@@ -320,6 +337,104 @@ public class SecurityController implements ISecurityController {
                 ctx.status(200).json(returnObject.put("msg", "Role " + newRole + " added to user"));
             } catch (EntityNotFoundException e) {
                 ctx.status(404).json("{\"msg\": \"User not found\"}");
+            }
+        };
+    }
+
+    /**
+     * PURPOSE: Validate an existing JWT token and verify the session exists in database
+     * 
+     * ENDPOINT: POST /api/auth/validate
+     * AUTHORIZATION: ANYONE (no authentication required to validate a token)
+     * 
+     * REQUEST: Must include Authorization header with Bearer token
+     *   Example: Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     * 
+     * RESPONSE on SUCCESS (200):
+     *   {
+     *     "msg": "Token is valid",
+     *     "email": "alice@company-a.com",
+     *     "sessionID": 123,
+     *     "expiresAt": "2025-11-19T15:30:45+02:00"
+     *   }
+     * 
+     * RESPONSE on FAILURE (401):
+     *   - "Authorization header missing" → No Bearer token provided
+     *   - "Authorization header malformed" → Wrong format (not "Bearer TOKEN")
+     *   - "Invalid token" → Token signature is invalid or expired
+     *   - "Session not found" → Token exists but no session in database
+     *   - "Session is inactive" → Session was deactivated
+     *   - "Session has expired" → Token expiry time has passed
+     * 
+     * USE CASES:
+     *   1. Frontend: Check if user is still logged in
+     *   2. Frontend: Before making API calls, validate token is still valid
+     *   3. Logout: Find session by token to deactivate it
+     *   4. Testing: Verify sessions are created after login
+     *   5. Monitoring: Check active sessions in the system
+     * 
+     * IMPORTANT: This endpoint does NOT require the authenticate() middleware
+     *            because it validates the token itself
+     */
+    @Override
+    public Handler validate() {
+        return (ctx) -> {
+            ObjectNode returnObject = objectMapper.createObjectNode();
+            try {
+                // Step 1: Extract Authorization header
+                String header = ctx.header("Authorization");
+                if (header == null) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header missing"));
+                    return;
+                }
+
+                // Step 2: Parse "Bearer TOKEN" format
+                String[] headerParts = header.split(" ");
+                if (headerParts.length != 2) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header malformed"));
+                    return;
+                }
+
+                // Step 3: Extract token and verify JWT signature & expiration
+                String token = headerParts[1];
+                UserDTO verifiedUser = verifyToken(token);
+
+                if (verifiedUser == null) {
+                    ctx.status(401).json(returnObject.put("msg", "Invalid token"));
+                    return;
+                }
+
+                // Step 4: Check if session exists in database (extra security layer)
+                Optional<Session> session = sessionDAO.findByToken(token);
+                if (session.isEmpty()) {
+                    ctx.status(401).json(returnObject.put("msg", "Session not found"));
+                    return;
+                }
+
+                // Step 5: Verify session is still active (not manually deactivated)
+                if (!session.get().getActive()) {
+                    ctx.status(401).json(returnObject.put("msg", "Session is inactive"));
+                    return;
+                }
+
+                // Step 6: Verify session has not expired (double-check with database)
+                if (java.time.OffsetDateTime.now().isAfter(session.get().getExpiresAt())) {
+                    ctx.status(401).json(returnObject.put("msg", "Session has expired"));
+                    return;
+                }
+
+                // Step 7: All checks passed! Return success with session details
+                ctx.status(200).json(returnObject
+                        .put("msg", "Token is valid")
+                        .put("email", verifiedUser.getEmail())
+                        .put("sessionID", session.get().getId())
+                        .put("expiresAt", session.get().getExpiresAt().toString()));
+
+            } catch (Exception e) {
+                // If anything unexpected happens, return 401 Unauthorized
+                ctx.status(401);
+                logger.error("Token validation failed: " + e.getMessage());
+                ctx.json(returnObject.put("msg", "Token validation failed: " + e.getMessage()));
             }
         };
     }

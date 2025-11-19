@@ -1,11 +1,10 @@
 package dat.daos.impl;
 
 import dat.daos.IDAO;
-import dat.entities.Customer;
+
 import dat.entities.Session;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -77,11 +76,23 @@ public class SessionDAO implements IDAO<Session> {
 
     @Override
     public Optional<Session> findByName(String name) {
+        throw new UnsupportedOperationException("findByName is not supported for Session");
+    }
+
+    // Need to add more methods for the Séssion entity or business methods:
+    public  Optional<Session> findByToken(String token) {
+
         try(EntityManager em = emf.createEntityManager()){
-            Session session = em.find(Session.class, name);
-            return Optional.ofNullable(session);
+            var query = em.createQuery(" SELECT s FROM Session s WHERE s.token = :token", Session.class);
+            query.setParameter("token", token);
+
+
+            return query.getResultList()
+                    .stream()
+                    .findFirst();
+
         }
     }
 
-    // Need to add more methods for the Séssion entity
+
 }
