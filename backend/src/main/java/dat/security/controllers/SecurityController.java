@@ -11,12 +11,11 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dat.config.HibernateConfig;
-import dat.daos.impl.CustomerDAO;
-import dat.daos.impl.SessionDAO;
-import dat.daos.impl.SmsBalanceDAO;
-import dat.daos.impl.SubscriptionDAO;
+import dat.daos.impl.*;
 import dat.dtos.RegisterRequest;
 import dat.entities.*;
+import dat.enums.ActivityLogStatus;
+import dat.enums.ActivityLogType;
 import dat.enums.AnchorPolicy;
 import dat.enums.SubscriptionStatus;
 import dat.security.daos.ISecurityDAO;
@@ -39,9 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
-import java.util.Date;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,6 +57,7 @@ public class SecurityController implements ISecurityController {
     private SerialLinkVerificationService serialLinkService;
     private SessionDAO sessionDAO;
     private CustomerDAO customerDAO;
+    private ActivityLogDAO activityLogDAO;
     private SubscriptionDAO subscriptionDAO;
     private SmsBalanceDAO smsBalanceDAO;
 
@@ -73,6 +71,7 @@ public class SecurityController implements ISecurityController {
         instance.serialLinkService = SerialLinkVerificationService.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.sessionDAO = SessionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.customerDAO = CustomerDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.activityLogDAO = ActivityLogDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.subscriptionDAO = SubscriptionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.smsBalanceDAO = SmsBalanceDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         return instance;
@@ -97,11 +96,30 @@ public class SecurityController implements ISecurityController {
                 // 3) Get IP & User-Agent from ctx
                 String ip = ctx.req().getRemoteAddr();
                 String userAgent =  ctx.header("User-Agent");
+                if(userAgent == null){
+                    userAgent = "unknown";
+                }
 
                 // 4) Create a DB session
 
                 Session session = new Session(customer,token,expiresAt,ip,userAgent);
                 sessionDAO.create(session);
+
+                Map<String, Object> metadata = Map.of(
+                        "ip"+ ctx.ip(),
+                        "device" + userAgent
+                );
+
+                ActivityLog activityLog = new ActivityLog(
+                        customer,
+                        session,
+                        ActivityLogType.LOGIN,
+                        ActivityLogStatus.SUCCESS,
+                        metadata
+
+                );
+
+                activityLogDAO.create(activityLog);
 
                 ctx.status(200).json(returnObject
                         .put("token", token)

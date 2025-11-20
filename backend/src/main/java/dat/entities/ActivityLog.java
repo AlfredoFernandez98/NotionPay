@@ -26,8 +26,8 @@ public class ActivityLog {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    @ManyToOne(optional = true)
-    @JoinColumn(name = "session_id", nullable = true)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "session_id", nullable = false)
     private Session session;
 
     @Enumerated(EnumType.STRING)
