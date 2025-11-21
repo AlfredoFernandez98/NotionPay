@@ -106,8 +106,8 @@ public class SecurityController implements ISecurityController {
                 sessionDAO.create(session);
 
                 Map<String, Object> metadata = Map.of(
-                        "ip"+ ctx.ip(),
-                        "device" + userAgent
+                        "ip: "+ ctx.ip(),
+                        "device: " + userAgent
                 );
 
                 ActivityLog activityLog = new ActivityLog(
