@@ -18,4 +18,6 @@ public interface ISecurityController {
     boolean authorize(UserDTO userDTO, Set<RouteRole> allowedRoles); // to verify user roles
     String createToken(UserDTO user) throws Exception;
     UserDTO verifyToken(String token) throws Exception;
+
+    Handler logout();
 }

@@ -457,4 +457,51 @@ public class SecurityController implements ISecurityController {
         };
     }
 
+    @Override
+    public Handler logout() {
+        return (ctx) -> {
+            ObjectNode returnObject = objectMapper.createObjectNode();
+            try {
+                String header = ctx.header("Authorization");
+                if (header == null) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header missing"));
+                    return;
+                }
+
+                String[] headerParts = header.split(" ");
+                if (headerParts.length != 2) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header malformed"));
+                    return;
+                }
+
+                String token = headerParts[1];
+                Optional<Session> sessionOpt = sessionDAO.findByToken(token);
+                if (sessionOpt.isEmpty()) {
+                    ctx.status(404).json(returnObject.put("msg", "Session not found"));
+                    return;
+                }
+
+                Session session = sessionOpt.get();
+                session.setActive(false);
+                ActivityLog activityLog = new ActivityLog(
+                        session.getCustomer(),
+                        session,
+                        ActivityLogType.LOGOUT,
+                        ActivityLogStatus.SUCCESS,
+                        Map.of(
+                                "ip", ctx.ip(),
+                                "device", ctx.header("User-Agent")
+                        )
+                );
+                sessionDAO.update(session);
+                activityLogDAO.create(activityLog);  // ← Save the logout activity
+
+                ctx.status(200).json(returnObject.put("msg", "Logout successful"));
+
+            } catch (Exception e) {
+                ctx.status(500).json(returnObject.put("msg", "Logout failed: " + e.getMessage()));
+            }
+        };
+    }
+
 }
