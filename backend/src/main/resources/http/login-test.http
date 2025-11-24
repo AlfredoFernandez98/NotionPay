@@ -62,3 +62,65 @@ Content-Type: application/json
 Authorization: Bearer invalid.token.here
 
 {}
+
+###############################################################################
+### LOGOUT TESTS - Test session deactivation and activity logging
+###############################################################################
+
+### Test 17: ✅ LOGOUT - Deactivate session (alice)
+### INSTRUCTIONS: 
+###   1. Run Test 11 (login) first to get token
+###   2. Copy the token and paste it below
+###   3. Run this test
+### EXPECTED: 200 OK - "Logout successful"
+### DATABASE RESULT: 
+###   - session.active = false (for alice's session)
+###   - activity_log entry created with type=LOGOUT, status=SUCCESS
+POST http://localhost:7070/api/auth/logout
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjM4ODczNTAsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.CgMm4umNoTaSzZLXFWPZz0nkeo20Vc0I3TGCb2LhPew
+
+{}
+
+### Test 18: ✅ LOGOUT - Deactivate session (bob)
+### INSTRUCTIONS: 
+###   1. Run Test 12 (login) first to get token
+###   2. Copy the token and paste it below
+###   3. Run this test
+### EXPECTED: 200 OK - "Logout successful"
+### DATABASE RESULT: 
+###   - session.active = false (for bob's session)
+###   - activity_log entry created with type=LOGOUT, status=SUCCESS
+POST http://localhost:7070/api/auth/logout
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{}
+
+### Test 19: ✅ VERIFY SESSION IS DEACTIVATED (should fail)
+### INSTRUCTIONS: 
+###   1. Run Test 17 (logout) first
+###   2. Use the SAME token from Test 17
+###   3. Run this test
+### EXPECTED: 401 Unauthorized - "Session is inactive"
+### This proves that deactivated sessions cannot be used
+POST http://localhost:7070/api/auth/validate
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_AFTER_LOGOUT
+
+{}
+
+### Test 20: ❌ LOGOUT - No Authorization Header (should fail)
+### EXPECTED: 401 Unauthorized - "Authorization header missing"
+POST http://localhost:7070/api/auth/logout
+Content-Type: application/json
+
+{}
+
+### Test 21: ❌ LOGOUT - Malformed Authorization Header (should fail)
+### EXPECTED: 401 Unauthorized - "Authorization header malformed"
+POST http://localhost:7070/api/auth/logout
+Content-Type: application/json
+Authorization: MalformedHeader invalid.token.here
+
+{}
