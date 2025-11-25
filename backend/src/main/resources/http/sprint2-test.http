@@ -1,0 +1,444 @@
+###############################################################################
+### SPRINT 2 - CUSTOMER FLOW TESTS
+### Test User Stories: #4 (Select Plan), #5 (Buy SMS), #7 (Save Card)
+###############################################################################
+### Base URL: http://localhost:7070/api
+### Make sure server is running and database is populated!
+###############################################################################
+
+###############################################################################
+### SETUP - Login as existing customer
+###############################################################################
+
+### Test 1: ✅ LOGIN - Get authentication token
+### INSTRUCTIONS: Use an existing customer account
+### EXPECTED: 200 OK - Returns token
+POST http://localhost:7070/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@company-a.com",
+  "password": "SecurePass123"
+}
+
+### Expected Response:
+# {
+#   "token": "eyJhbGc...",
+#   "email": "alice@company-a.com"
+# }
+### COPY THE TOKEN FROM RESPONSE AND USE IT IN TESTS BELOW!
+
+###############################################################################
+### USER STORY #4 - VALG AF ABONNEMENT (Select Subscription Plan)
+###############################################################################
+
+### Test 2: ✅ VIEW AVAILABLE PLANS (Customer sees plan options)
+### INSTRUCTIONS: No auth needed - public endpoint
+### EXPECTED: 200 OK - List of active plans (10, 20, 30 SMS)
+GET http://localhost:7070/api/plans/active
+
+### Expected Response:
+# [
+#   {
+#     "id": 1,
+#     "name": "Plan 10 SMS",
+#     "priceCents": 9900,
+#     "currency": "DKK",
+#     "description": "10 SMS per month",
+#     "active": true
+#   },
+#   ...
+# ]
+
+### Test 3: ✅ GET SPECIFIC PLAN DETAILS
+### INSTRUCTIONS: Replace {planId} with actual plan ID from Test 2
+### EXPECTED: 200 OK - Plan details
+GET http://localhost:7070/api/plans/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQwNTg1NDcsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.ErG6j-_-m8w0KCqFxNHYjjrA_YBGU18fPDXZ29A0mPk
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "name": "Plan 10 SMS",
+#   "priceCents": 9900,
+#   "description": "10 SMS per month"
+# }
+
+### Test 4: ✅ CUSTOMER SELECTS A PLAN (Subscribe)
+### INSTRUCTIONS: 
+###   1. Copy token from Test 1
+###   2. Use your customer ID (check database or use 1)
+###   3. Use plan ID from Test 2
+### EXPECTED: 201 Created - Subscription created
+POST http://localhost:7070/api/subscriptions
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQwNzQxMTAsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.YmtPwEb9ZWhvksrQFKeTM83-5jpcAdYPJ4gU6_bqoOs
+
+{
+  "customerId": 1,
+  "planId": 1
+}
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "planId": 1,
+#   "planName": "Plan 10 SMS",
+#   "status": "ACTIVE",
+#   "startDate": "2024-11-25T...",
+#   "nextBillingDate": "2024-12-25T..."
+# }
+
+### Test 5: ✅ VIEW MY SUBSCRIPTION
+### INSTRUCTIONS: Use subscription ID from Test 4
+### EXPECTED: 200 OK - Subscription details
+GET http://localhost:7070/api/subscriptions/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Test 6: ❌ TRY TO SUBSCRIBE AGAIN (Should fail - already has subscription)
+### EXPECTED: 409 Conflict - "Customer already has an active subscription"
+POST http://localhost:7070/api/subscriptions
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "planId": 2
+}
+
+###############################################################################
+### USER STORY #7 - GEM BETALINGSMETODE (Save Payment Method)
+###############################################################################
+
+### Test 7: ✅ ADD PAYMENT METHOD (Save credit card)
+### INSTRUCTIONS: 
+###   1. Use your customer ID
+###   2. Card details are mock data (no real payment processor)
+### EXPECTED: 201 Created - Payment method saved
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "type": "card",
+  "brand": "visa",
+  "last4": "4242",
+  "expMonth": 12,
+  "expYear": 2025,
+  "processorMethodId": "pm_test_visa_4242",
+  "isDefault": true,
+  "fingerprint": "fp_test_123"
+}
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "type": "card",
+#   "brand": "visa",
+#   "last4": "4242",
+#   "expMonth": 12,
+#   "expYear": 2025,
+#   "isDefault": true,
+#   "status": "ACTIVE"
+# }
+
+### Test 8: ✅ VIEW MY SAVED CARDS
+### INSTRUCTIONS: Use your customer ID
+### EXPECTED: 200 OK - List of saved payment methods
+GET http://localhost:7070/api/customers/1/payment-methods
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected Response:
+# [
+#   {
+#     "id": 1,
+#     "type": "card",
+#     "brand": "visa",
+#     "last4": "4242",
+#     "isDefault": true
+#   }
+# ]
+
+### Test 9: ✅ ADD ANOTHER CARD (Not default)
+### EXPECTED: 201 Created - Second card saved
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "type": "card",
+  "brand": "mastercard",
+  "last4": "5555",
+  "expMonth": 6,
+  "expYear": 2026,
+  "processorMethodId": "pm_test_mastercard_5555",
+  "isDefault": false,
+  "fingerprint": "fp_test_456"
+}
+
+### Test 10: ✅ SET CARD AS DEFAULT
+### INSTRUCTIONS: Use payment method ID from Test 9
+### EXPECTED: 200 OK - Card updated
+PUT http://localhost:7070/api/payment-methods/2
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "isDefault": true
+}
+
+### Test 11: ❌ TRY TO ADD CARD WITH INVALID DATA (Missing required fields)
+### EXPECTED: 400 Bad Request - "Customer ID is required"
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "type": "card",
+  "brand": "visa",
+  "last4": "1234"
+}
+
+### Test 12: ✅ DELETE PAYMENT METHOD (Remove card)
+### INSTRUCTIONS: Use payment method ID
+### EXPECTED: 200 OK - "Payment method deleted successfully"
+DELETE http://localhost:7070/api/payment-methods/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+###############################################################################
+### USER STORY #5 - SMS SOM PRODUKT (Buy SMS Package)
+###############################################################################
+
+### Test 13: ✅ VIEW AVAILABLE SMS PRODUCTS
+### INSTRUCTIONS: No auth needed - public endpoint
+### EXPECTED: 200 OK - List of SMS products
+GET http://localhost:7070/api/products/type/SMS
+
+### Expected Response:
+# [
+#   {
+#     "id": 1,
+#     "productType": "SMS",
+#     "name": "SMS Package 100",
+#     "priceCents": 50000,
+#     "currency": "DKK",
+#     "description": "100 SMS messages for emergency notifications"
+#   }
+# ]
+
+### Test 14: ✅ CHECK SMS BALANCE BEFORE PURCHASE
+### INSTRUCTIONS: Use your customer ID
+### EXPECTED: 200 OK - Current SMS balance
+GET http://localhost:7070/api/customers/1/sms-balance
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "externalCustomerId": "ext_123",
+#   "remainingSmsCredits": 10
+# }
+
+### Test 15: ✅ PURCHASE SMS PACKAGE (Buy 100 SMS for 500 DKK)
+### INSTRUCTIONS: 
+###   1. Use product ID from Test 13
+###   2. Use your customer ID
+###   3. Use payment method ID from Test 7 or 9
+### EXPECTED: 201 Created - Payment successful, SMS added
+POST http://localhost:7070/api/products/1/purchase
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 2
+}
+
+### Expected Response:
+# {
+#   "message": "SMS package purchased successfully",
+#   "paymentId": 1,
+#   "productName": "SMS Package 100",
+#   "price": 50000,
+#   "smsAdded": 100
+# }
+
+### Test 16: ✅ CHECK SMS BALANCE AFTER PURCHASE (Should show +100 SMS)
+### INSTRUCTIONS: Use your customer ID
+### EXPECTED: 200 OK - Balance increased by 100
+GET http://localhost:7070/api/customers/1/sms-balance
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "externalCustomerId": "ext_123",
+#   "remainingSmsCredits": 110  ← Was 10, now 110!
+# }
+
+### Test 17: ❌ TRY TO PURCHASE WITH INVALID PAYMENT METHOD
+### EXPECTED: 404 Not Found - "Payment method not found"
+POST http://localhost:7070/api/products/1/purchase
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 99999
+}
+
+### Test 18: ❌ TRY TO PURCHASE WITH SOMEONE ELSE'S CARD
+### INSTRUCTIONS: Use another customer's payment method ID
+### EXPECTED: 403 Forbidden - "Payment method does not belong to this customer"
+POST http://localhost:7070/api/products/1/purchase
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 999
+}
+
+### Test 19: ❌ TRY TO PURCHASE NON-SMS PRODUCT (Should fail)
+### INSTRUCTIONS: Use a non-SMS product ID (if exists)
+### EXPECTED: 400 Bad Request - "This product is not an SMS package"
+POST http://localhost:7070/api/products/99/purchase
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 2
+}
+
+###############################################################################
+### SUBSCRIPTION MANAGEMENT
+###############################################################################
+
+### Test 20: ✅ VIEW ALL MY SUBSCRIPTIONS
+### EXPECTED: 200 OK - List of subscriptions
+GET http://localhost:7070/api/subscriptions
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Test 21: ✅ UPDATE SUBSCRIPTION STATUS
+### INSTRUCTIONS: Use subscription ID from Test 4
+### EXPECTED: 200 OK - Subscription updated
+PUT http://localhost:7070/api/subscriptions/1
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "status": "ACTIVE"
+}
+
+### Test 22: ✅ CANCEL SUBSCRIPTION
+### INSTRUCTIONS: Use subscription ID
+### EXPECTED: 200 OK - "Subscription cancelled successfully"
+DELETE http://localhost:7070/api/subscriptions/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Test 23: ✅ VERIFY SUBSCRIPTION IS CANCELLED
+### EXPECTED: 200 OK - Status should be "CANCELED"
+GET http://localhost:7070/api/subscriptions/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "status": "CANCELED",  ← Changed!
+#   "endDate": "2024-11-25T..."
+# }
+
+###############################################################################
+### CUSTOMER PROFILE
+###############################################################################
+
+### Test 24: ✅ VIEW MY CUSTOMER PROFILE
+### INSTRUCTIONS: Use your customer ID
+### EXPECTED: 200 OK - Customer details
+GET http://localhost:7070/api/customers/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "email": "alice@company-a.com",
+#   "companyName": "Company A",
+#   "serialNumber": 101010101,
+#   "createdAt": "2024-11-25T..."
+# }
+
+### Test 25: ✅ VIEW ALL CUSTOMERS (For testing - normally admin only)
+### EXPECTED: 200 OK - List of all customers
+GET http://localhost:7070/api/customers
+Authorization: Bearer YOUR_TOKEN_HERE
+
+###############################################################################
+### ERROR HANDLING TESTS
+###############################################################################
+
+### Test 26: ❌ SUBSCRIBE WITHOUT AUTHENTICATION
+### EXPECTED: 401 Unauthorized
+POST http://localhost:7070/api/subscriptions
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "planId": 1
+}
+
+### Test 27: ❌ SUBSCRIBE WITH INVALID CUSTOMER ID
+### EXPECTED: 404 Not Found - "Customer not found"
+POST http://localhost:7070/api/subscriptions
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 99999,
+  "planId": 1
+}
+
+### Test 28: ❌ SUBSCRIBE WITH INVALID PLAN ID
+### EXPECTED: 404 Not Found - "Plan not found"
+POST http://localhost:7070/api/subscriptions
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "planId": 99999
+}
+
+### Test 29: ❌ ADD CARD WITHOUT REQUIRED FIELDS
+### EXPECTED: 400 Bad Request - "Customer ID is required"
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "type": "card"
+}
+
+### Test 30: ❌ PURCHASE SMS WITHOUT PAYMENT METHOD
+### EXPECTED: 400 Bad Request - Missing required fields
+POST http://localhost:7070/api/products/1/purchase
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1
+}
+
+###############################################################################
+### END OF SPRINT 2 CUSTOMER TESTS
+###############################################################################
+### ✅ What we tested:
+### - User Story #4: Customer can view and select subscription plans
+### - User Story #7: Customer can save and manage payment methods
+### - User Story #5: Customer can purchase SMS packages
+### - All error handling scenarios
+###############################################################################

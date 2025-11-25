@@ -2,6 +2,7 @@ package dat.controllers.impl;
 
 import dat.controllers.IController;
 import dat.daos.impl.PaymentDAO;
+import dat.dtos.PaymentDTO;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import jakarta.persistence.EntityManagerFactory;
@@ -15,7 +16,7 @@ import jakarta.persistence.EntityManagerFactory;
  *  - getAllPayments (GET /api/payments)
  *  - getCustomerPayments (GET /api/customers/{id}/payments)
  */
-public class PaymentController implements IController {
+public class PaymentController implements IController<PaymentDTO> {
     private final PaymentDAO paymentDAO;
 
     public PaymentController(EntityManagerFactory emf) {

@@ -5,27 +5,23 @@ import dat.daos.impl.CustomerDAO;
 import dat.daos.impl.SmsBalanceDAO;
 import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.CustomerDTO;
+import dat.dtos.SmsBalanceDTO;
 import dat.entities.Customer;
 import dat.entities.Plan;
 import dat.entities.SmsBalance;
 import dat.entities.Subscription;
 import dat.enums.AnchorPolicy;
 import dat.enums.SubscriptionStatus;
-import dat.security.daos.SecurityDAO;
-import dat.security.dtos.UserDTO;
 import dat.security.entities.User;
 import dat.services.SerialLinkVerificationService;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import lombok.Getter;
-import org.eclipse.jetty.server.Authentication;
 
 import java.time.OffsetDateTime;
-import java.util.Map;
 import java.util.Optional;
 
-public class CustomerController implements IController{
+public class CustomerController implements IController<CustomerDTO> {
 
     private final CustomerDAO customerDAO;
     private final SmsBalanceDAO smsBalanceDAO;
@@ -38,19 +34,44 @@ public class CustomerController implements IController{
         this.customerDAO = CustomerDAO.getInstance(emf);
         this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
         this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
-        this.serialLinkService = serialLinkService.getInstance(emf);
+        this.serialLinkService = SerialLinkVerificationService.getInstance(emf);
         this.emf = emf;
 
 
     }
     @Override
     public void read(Context ctx) {
+        try {
+            Long customerId = Long.parseLong(ctx.pathParam("id"));
+            Optional<Customer> customer = customerDAO.getById(customerId);
 
+            if (customer.isEmpty()) {
+                ctx.status(404);
+                ctx.json("Customer not found");
+                return;
+            }
+
+            ctx.status(200);
+            ctx.json(convertToDTO(customer.get()));
+        } catch (NumberFormatException e) {
+            ctx.status(400);
+            ctx.json("Invalid customer ID format");
+        } catch (Exception e) {
+            ctx.status(500);
+            ctx.json("Error: " + e.getMessage());
+        }
     }
 
     @Override
     public void readAll(Context ctx) {
-
+        try {
+            var customers = customerDAO.getAll();
+            ctx.status(200);
+            ctx.json(customers.stream().map(this::convertToDTO).toList());
+        } catch (Exception e) {
+            ctx.status(500);
+            ctx.json("Error: " + e.getMessage());
+        }
     }
 
     @Override
@@ -144,9 +165,7 @@ public class CustomerController implements IController{
             
             // 11. Return response
             ctx.status(201);
-            ctx.json("Customer saved: " + savedCustomer.getUser().getEmail() + 
-                    " | Plan: " + plan.getName() + 
-                    " | External ID: " + savedCustomer.getExternalCustomerId());
+            ctx.json(convertToDTO(savedCustomer));
 
 
             }   catch(Exception e){
@@ -196,7 +215,7 @@ public class CustomerController implements IController{
             
             if (balance.isPresent()) {
                 ctx.status(200);
-                ctx.json(balance.get());
+                ctx.json(convertSmsBalanceToDTO(balance.get()));
             } else {
                 ctx.status(404);
                 ctx.json("SMS balance not found for customer");
@@ -208,6 +227,31 @@ public class CustomerController implements IController{
             ctx.status(500);
             ctx.json("Error fetching SMS balance: " + e.getMessage());
         }
+    }
+
+    /**
+     * Helper method to convert Customer entity to DTO
+     */
+    private CustomerDTO convertToDTO(Customer customer) {
+        CustomerDTO dto = new CustomerDTO();
+        dto.id = customer.getId();
+        dto.email = customer.getUser().getEmail();
+        dto.companyName = customer.getCompanyName();
+        dto.serialNumber = customer.getSerialNumber();
+        dto.externalCustomerId = customer.getExternalCustomerId();
+        dto.createdAt = customer.getCreatedAt();
+        return dto;
+    }
+
+    /**
+     * Helper method to convert SmsBalance entity to DTO
+     */
+    private SmsBalanceDTO convertSmsBalanceToDTO(SmsBalance balance) {
+        SmsBalanceDTO dto = new SmsBalanceDTO();
+        dto.id = balance.getId();
+        dto.externalCustomerId = balance.getExternalCustomerId();
+        dto.remainingSmsCredits = balance.getRemainingSms();
+        return dto;
     }
 
 }

@@ -17,6 +17,7 @@
         <hibernate.version>6.6.3.Final</hibernate.version>
         <postgresql.version>42.7.4</postgresql.version>
         <junit.version>5.11.3</junit.version>
+        <mockito.version>5.14.2</mockito.version>
         <hamcrest.version>3.0</hamcrest.version>
         <testcontainers.version>1.20.3</testcontainers.version>
         <hikari.version>6.2.1</hikari.version>
@@ -119,6 +120,19 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!--        https://www.baeldung.com/mockito-series-->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <!--        https://www.baeldung.com/hamcrest-core-matchers-->

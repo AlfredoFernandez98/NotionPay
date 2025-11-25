@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "postgres-notionpay": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://postgres:postgres@localhost:5432/notionpay"
+      ],
+      "env": {
+        "PGDATABASE": "notionpay",
+        "PGHOST": "localhost",
+        "PGPORT": "5432",
+        "PGUSER": "postgres",
+        "PGPASSWORD": "postgres"
+      }
+    }
+  }
+}
+
+
+

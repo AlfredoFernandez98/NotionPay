@@ -78,7 +78,7 @@ Authorization: Bearer invalid.token.here
 ###   - activity_log entry created with type=LOGOUT, status=SUCCESS
 POST http://localhost:7070/api/auth/logout
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjM4ODczNTAsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.CgMm4umNoTaSzZLXFWPZz0nkeo20Vc0I3TGCb2LhPew
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQwNTczNTAsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.V0YxLnPtzImoo0s1NjU_ei0r30gxrVgVQ3wf2lgsUw8
 
 {}
 
