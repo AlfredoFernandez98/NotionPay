@@ -1,64 +1,28 @@
-###############################################################################
-### LOGIN TESTS - Test if sessions are created
-###############################################################################
-
-### Test 11: ✅ VALID LOGIN (Should create session!)
-### Data: alice@company-a.com + correct password
-### INSTRUCTIONS: Run Test 1 (register) FIRST, then run this
-### EXPECTED: Returns token + sessionID (proves session was created in DB)
+### LOGIN - Valid credentials
 POST http://localhost:7070/api/auth/login
 Content-Type: application/json
 
 {
   "email": "alice@company-a.com",
-  "password":"SecurePass123"
+  "password": "SecurePass123"
 }
 
-### Test 12: ✅ VALID LOGIN (Should create session!)
-### Data: bob@company-b.com + correct password
-### INSTRUCTIONS: Run Test 2 (register) FIRST, then run this
-### EXPECTED: Returns token + sessionID (proves session was created in DB)
-POST http://localhost:7070/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "bob@company-b.com",
-  "password": "ProPassword456"
-}
-
-### Test 13: ❌ INVALID LOGIN (Wrong password - Should fail)
-### EXPECTED: 401 Unauthorized - no session created
+### LOGIN - Wrong password
 POST http://localhost:7070/api/auth/login
 Content-Type: application/json
 
 {
   "email": "alice@company-a.com",
-  "password": "WrongPassword123"
+  "password": "WrongPassword"
 }
 
-### Test 14: ✅ VERIFY SESSION EXISTS (alice)
-### INSTRUCTIONS: Run Test 11 first, copy the token, paste it here
-### EXPECTED: 200 OK - confirms token is valid and session exists
-POST http://localhost:7070/api/auth/validate
+### LOGOUT - Deactivate session
+# Copy token from login response and paste below
+POST http://localhost:7070/api/auth/logout
 Content-Type: application/json
-Authorization: Bearer $2a$10$MQgIWAoAs5QJW0nyaxToOOO/XGqpbe0tbeUIhndG8xSC6I2cCN24i
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxNTAzMDcsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.D29jjcAPIHH7gEJ25D8AVN1ODa_493osyc5WSLG7h2E
 
-{}
-
-### Test 15: ✅ VERIFY SESSION EXISTS (bob)
-### INSTRUCTIONS: Run Test 12 first, copy the token, paste it here
-### EXPECTED: 200 OK - confirms token is valid and session exists
-POST http://localhost:7070/api/auth/validate
-Content-Type: application/json
-Authorization: Bearer YOUR_TOKEN_HERE
-
-{}
-
-### Test 16: ❌ VERIFY INVALID TOKEN FAILS
-### INSTRUCTIONS: Use a random/malformed token
-### EXPECTED: 401 Unauthorized - session/token invalid
-POST http://localhost:7070/api/auth/validate
+### LOGOUT - Invalid token
+POST http://localhost:7070/api/auth/logout
 Content-Type: application/json
 Authorization: Bearer invalid.token.here
-
-{}

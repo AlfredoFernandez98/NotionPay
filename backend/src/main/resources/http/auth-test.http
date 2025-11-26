@@ -22,17 +22,6 @@ Content-Type: application/json
   "serialNumber": 404040404
 }
 
-### Test 3: ✅ VALID Registration (Should work!)
-### Data: charlie@company-c.com + Serial 505050505 (Enterprise Plan)
-POST http://localhost:7070/api/auth/register
-Content-Type: application/json
-
-{
-  "email": "charlie@company-c.com",
-  "password": "EnterprisePass789",
-  "companyName": "Company C",
-  "serialNumber": 505050505
-}
 
 ### Test 4: ❌ WRONG EMAIL (Should fail - email doesn't match serial)
 ### Data: wrong@email.com + Serial 101010101 (email mismatch)
