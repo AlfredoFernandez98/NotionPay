@@ -25,11 +25,13 @@ public class SerialLinkMigration {
             createPlan(em, "Professional Monthly", Period.MONTHLY, 99900, "Professional features");
             createPlan(em, "Enterprise Yearly", Period.YEARLY, 999900, "Enterprise features");
             
-            createSerialLink(em, 101010101, "cus_ext_a_001", "alice@company-a.com", "Basic Monthly", 100);
-            createSerialLink(em, 404040404, "cus_ext_b_002", "bob@company-b.com", "Professional Monthly", 500);
-            createSerialLink(em, 505050505, "cus_ext_c_003", "charlie@company-c.com", "Enterprise Yearly", 1000);
-            createSerialLink(em, 202020202, "cus_ext_d_004", "diana@company-d.com", "Basic Monthly", 100);
-            createSerialLink(em, 999999999, "cus_ext_e_005", "eve@company-e.com", "Basic Monthly", 100);
+            // Mock data: Customers from external system with payment due dates
+            java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+            createSerialLink(em, 101010101, "cus_ext_a_001", "alice@company-a.com", "Basic Monthly", 100, now.plusDays(15));
+            createSerialLink(em, 404040404, "cus_ext_b_002", "bob@company-b.com", "Professional Monthly", 500, now.plusDays(7));
+            createSerialLink(em, 505050505, "cus_ext_c_003", "charlie@company-c.com", "Enterprise Yearly", 1000, now.plusMonths(2));
+            createSerialLink(em, 202020202, "cus_ext_d_004", "diana@company-d.com", "Basic Monthly", 100, now.plusDays(30));
+            createSerialLink(em, 999999999, "cus_ext_e_005", "eve@company-e.com", "Basic Monthly", 100, now.plusDays(5));
             
             em.getTransaction().commit();
             System.out.println("Created 3 Plans and 5 SerialLinks");
@@ -57,8 +59,9 @@ public class SerialLinkMigration {
     }
     
     private static void createSerialLink(EntityManager em, int serialNumber, String externalCustomerId, 
-                                         String expectedEmail, String planName, int initialSmsBalance) {
-        SerialLink serial = new SerialLink(serialNumber, externalCustomerId, expectedEmail, planName, initialSmsBalance);
+                                         String expectedEmail, String planName, int initialSmsBalance, 
+                                         java.time.OffsetDateTime nextPaymentDate) {
+        SerialLink serial = new SerialLink(serialNumber, externalCustomerId, expectedEmail, planName, initialSmsBalance, nextPaymentDate);
         em.persist(serial);
     }
     

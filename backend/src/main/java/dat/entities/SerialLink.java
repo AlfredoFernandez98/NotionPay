@@ -5,9 +5,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
+
 /**
- * Lookup table linking serial numbers to external customer IDs and initial SMS balance
- * Used during registration to validate and provide initial credits
+ * Lookup table linking serial numbers to external customer data
+ * Represents data synced from external system (like Netflix's internal DB)
+ * Used during registration to verify and onboard customers to payment system
  */
 @Entity
 @Getter
@@ -32,14 +35,18 @@ public class SerialLink {
     private String planName;
     
     @Column(name = "initial_sms_balance", nullable = false)
-    private Integer initialSmsBalance; // Fake SMS balance the customer gets
+    private Integer initialSmsBalance;
+    
+    @Column(name = "next_payment_date", nullable = false)
+    private OffsetDateTime nextPaymentDate; // When external system expects next payment
 
     public SerialLink(Integer serialNumber, String externalCustomerId, String expectedEmail, 
-                     String planName, Integer initialSmsBalance) {
+                     String planName, Integer initialSmsBalance, OffsetDateTime nextPaymentDate) {
         this.serialNumber = serialNumber;
         this.externalCustomerId = externalCustomerId;
         this.expectedEmail = expectedEmail;
         this.planName = planName;
         this.initialSmsBalance = initialSmsBalance;
+        this.nextPaymentDate = nextPaymentDate;
     }
 }

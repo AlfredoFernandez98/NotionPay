@@ -183,17 +183,18 @@ public class SecurityController implements ISecurityController {
                 // Get Plan for subscription
                 Plan plan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
                 
-                // Create Subscription with trial period
+                // Create Subscription with ACTIVE status (customer already subscribed in external system)
                 Subscription subscription = new Subscription(
                     customer,
                     plan,
-                    SubscriptionStatus.TRIALING,
+                    SubscriptionStatus.ACTIVE,
                     java.time.OffsetDateTime.now(),
-                    java.time.OffsetDateTime.now().plusMonths(1),
+                    serialLink.getNextPaymentDate(),
                     AnchorPolicy.ANNIVERSARY
                 );
                 subscriptionDAO.create(subscription);
-                logger.info("Subscription created: {} for {}", plan.getName(), customer.getCompanyName());
+                logger.info("Subscription created: {} for {} with next payment on {}", 
+                    plan.getName(), customer.getCompanyName(), serialLink.getNextPaymentDate());
                 
                 // Create SmsBalance linked via external_customer_id
                 SmsBalance smsBalance = new SmsBalance(

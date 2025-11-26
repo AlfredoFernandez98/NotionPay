@@ -1,0 +1,183 @@
+### ========================================
+### SUBSCRIPTION ENDPOINTS TEST
+### Tests subscription creation, retrieval, and cancellation
+### ========================================
+
+### ========================================
+### STEP 1: Register New Customer (Creates ACTIVE Subscription)
+### ========================================
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@company-a.com",
+  "password": "SecurePass123",
+  "companyName": "Company A Solutions",
+  "serialNumber": 101010101
+}
+
+### Expected Response (201 Created):
+# {
+#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI...",
+#   "email": "alice@company-a.com",
+#   "customerId": 1,
+#   "subscriptionId": 1,
+#   "planId": 1,
+#   "planName": "Basic Monthly",
+#   "initialSmsCredits": 100,
+#   "msg": "Registration successful! You are subscribed to Basic Monthly"
+# }
+
+### ========================================
+### STEP 2: Login to Get Token
+### ========================================
+POST http://localhost:7070/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@company-a.com",
+  "password": "SecurePass123"
+}
+
+### Expected Response (200 OK):
+# {
+#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI...",
+#   "email": "alice@company-a.com",
+#   "sessionID": 1
+# }
+# 
+# SAVE THE TOKEN FOR THE NEXT REQUESTS!
+
+### ========================================
+### STEP 3: Get Customer's Subscription
+### ========================================
+GET http://localhost:7070/api/customers/1/subscription
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxODY4OTgsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.wCSEVFJV2KEb8qH2O-3ZuikmjykZktlan269TS-T9hc
+
+### Expected Response (200 OK):
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "customerEmail": "alice@company-a.com",
+#   "planId": 1,
+#   "planName": "Basic Monthly",
+#   "status": "ACTIVE",
+#   "startDate": "2025-11-26T20:00:00+01:00",
+#   "endDate": null,
+#   "nextBillingDate": "2025-12-11T20:00:00+01:00",  // ~15 days from registration (from SerialLink)
+#   "anchorPolicy": "ANNIVERSARY"
+# }
+
+### ========================================
+### STEP 4: Get Subscription by ID
+### ========================================
+GET http://localhost:7070/api/subscriptions/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxODY4OTgsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.wCSEVFJV2KEb8qH2O-3ZuikmjykZktlan269TS-T9hc
+
+### Expected Response (200 OK):
+# Same as above - should return the subscription details
+
+### ========================================
+### STEP 5: Try to Get Non-Existent Subscription
+### ========================================
+GET http://localhost:7070/api/subscriptions/999
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxODY4OTgsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.wCSEVFJV2KEb8qH2O-3ZuikmjykZktlan269TS-T9hc
+
+### Expected Response (404 Not Found):
+# {
+#   "msg": "Subscription not found with ID: 999"
+# }
+
+### ========================================
+### STEP 6: Cancel Subscription
+### ========================================
+PUT http://localhost:7070/api/subscriptions/1/cancel
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxODY4OTgsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.wCSEVFJV2KEb8qH2O-3ZuikmjykZktlan269TS-T9hc
+
+### Expected Response (200 OK):
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "customerEmail": "alice@company-a.com",
+#   "planId": 1,
+#   "planName": "Basic Monthly",
+#   "status": "CANCELED",
+#   "startDate": "2025-11-26T20:00:00+01:00",
+#   "endDate": "2025-11-26T20:30:00+01:00",  // Timestamp when canceled
+#   "nextBillingDate": "2025-12-11T20:00:00+01:00",
+#   "anchorPolicy": "ANNIVERSARY"
+# }
+
+### ========================================
+### STEP 7: Verify Cancellation - Check Subscription Again
+### ========================================
+GET http://localhost:7070/api/customers/1/subscription
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQxODY4OTgsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.wCSEVFJV2KEb8qH2O-3ZuikmjykZktlan269TS-T9hc
+
+### Expected Response (404 Not Found):
+# {
+#   "msg": "No active subscription found for customer ID: 1"
+# }
+# 
+# NOTE: The getActiveSubscriptionForCustomer() method filters by status='ACTIVE'
+# Since we just canceled it, status is now 'CANCELED', so it won't be found.
+
+### ========================================
+### Verify in Database:
+### ========================================
+# Run in PostgreSQL:
+# 
+# SELECT 
+#   s.subscription_id,
+#   c.email,
+#   p.plan_name,
+#   s.status,
+#   s.start_date,
+#   s.next_billing_date,
+#   s.end_date
+# FROM subscription s
+# JOIN customer c ON s.customer_id = c.customer_id
+# JOIN plan p ON s.plan_id = p.plan_id;
+#
+# Should show:
+# - subscription_id: 1
+# - status: ACTIVE (initially) or CANCELED (after cancellation)
+# - next_billing_date: ~15 days from now (from SerialLink.nextPaymentDate)
+# - start_date: timestamp when customer registered
+# - end_date: NULL (initially) or timestamp (after cancellation)
+
+### ========================================
+### Additional Test: Register Second Customer
+### ========================================
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "bob@company-b.com",
+  "password": "SecurePass456",
+  "companyName": "Company B Tech",
+  "serialNumber": 404040404
+}
+
+### Expected Response (201 Created):
+# {
+#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI...",
+#   "email": "bob@company-b.com",
+#   "customerId": 2,
+#   "subscriptionId": 2,
+#   "planId": 2,
+#   "planName": "Professional",
+#   "initialSmsCredits": 500,
+#   "msg": "Registration successful! You are subscribed to Professional"
+# }
+# 
+# Bob's nextPaymentDate should be ~7 days from now (from SerialLink mock data)
+
+### ========================================
+### Available Test Serial Numbers:
+### ========================================
+# 101010101 - alice@company-a.com   - Basic Monthly      - Payment due in 15 days
+# 404040404 - bob@company-b.com     - Professional       - Payment due in 7 days
+# 505050505 - charlie@company-c.com - Enterprise Yearly  - Payment due in 2 months
+# 202020202 - diana@company-d.com   - Basic Monthly      - Payment due in 30 days
+# 999999999 - eve@example.com       - Basic Monthly      - Payment due in 5 days

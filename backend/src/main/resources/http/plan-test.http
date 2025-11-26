@@ -1,0 +1,90 @@
+### ========================================
+### PLAN ENDPOINT TESTS
+### ========================================
+### Base URL: http://localhost:7070/api
+### Make sure server is running!
+
+### ========================================
+### TEST 1: Get All Active Plans
+### ========================================
+GET http://localhost:7070/api/plans
+
+### Expected Response:
+# 200 OK
+# [
+#   {
+#     "id": 1,
+#     "name": "Basic Monthly",
+#     "period": "MONTHLY",
+#     "priceCents": 49900,
+#     "currency": "DKK",
+#     "description": "Basic features",
+#     "active": true
+#   },
+#   ...
+# ]
+
+### ========================================
+### TEST 2: Get Plan by ID (Basic Monthly)
+### ========================================
+GET http://localhost:7070/api/plans/1
+
+### Expected Response:
+# 200 OK
+# {
+#   "id": 1,
+#   "name": "Basic Monthly",
+#   "period": "MONTHLY",
+#   "priceCents": 49900,
+#   "currency": "DKK",
+#   "description": "Basic features",
+#   "active": true
+# }
+
+### ========================================
+### TEST 3: Get Plan by ID (Professional Monthly)
+### ========================================
+GET http://localhost:7070/api/plans/2
+
+### Expected Response:
+# 200 OK
+# {
+#   "id": 2,
+#   "name": "Professional Monthly",
+#   ...
+# }
+
+### ========================================
+### TEST 4: Get Plan by ID (Enterprise Yearly)
+### ========================================
+GET http://localhost:7070/api/plans/3
+
+### Expected Response:
+# 200 OK
+
+### ========================================
+### TEST 5: Get Non-Existent Plan
+### ========================================
+GET http://localhost:7070/api/plans/999
+
+### Expected Response:
+# 404 Not Found
+# "Plan not found"
+
+### ========================================
+### TEST 6: Get Plan with Invalid ID
+### ========================================
+GET http://localhost:7070/api/plans/abc
+
+### Expected Response:
+# 400 Bad Request
+# "Invalid plan ID format"
+
+### ========================================
+### NOTE: Plans Available in Database
+### ========================================
+# These plans should be created by SerialLinkMigration.java:
+# - ID 1: Basic Monthly (499 DKK)
+# - ID 2: Professional Monthly (999 DKK)
+# - ID 3: Enterprise Yearly (9999 DKK)
+

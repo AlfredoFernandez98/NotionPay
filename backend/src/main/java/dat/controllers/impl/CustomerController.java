@@ -12,22 +12,23 @@ import dat.entities.SmsBalance;
 import dat.entities.Subscription;
 import dat.enums.AnchorPolicy;
 import dat.enums.SubscriptionStatus;
+import dat.security.daos.ISecurityDAO;
+import dat.security.daos.SecurityDAO;
 import dat.security.entities.User;
 import dat.services.SerialLinkVerificationService;
 import io.javalin.http.Context;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
-public class CustomerController implements IController{
+public class CustomerController implements IController<CustomerDTO>{
 
     private final CustomerDAO customerDAO;
     private final SmsBalanceDAO smsBalanceDAO;
     private final SubscriptionDAO subscriptionDAO;
     private final SerialLinkVerificationService serialLinkService;
-    private final EntityManagerFactory emf;
+    private final ISecurityDAO securityDAO;
 
 
     public CustomerController(EntityManagerFactory emf, SerialLinkVerificationService serialLinkService) {
@@ -35,7 +36,7 @@ public class CustomerController implements IController{
         this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
         this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
         this.serialLinkService = SerialLinkVerificationService.getInstance(emf);
-        this.emf = emf;
+        this.securityDAO = new SecurityDAO(emf);
     }
     @Override
     public void read(Context ctx) {
@@ -94,7 +95,7 @@ public class CustomerController implements IController{
             }
 
             // 6. Get User
-            User user = getUserByEmail(dto.email);
+            User user = securityDAO.getUserByEmail(dto.email);
             if (user == null) {
                 ctx.status(400);
                 ctx.json("No user found with email: " + dto.email);
@@ -118,13 +119,13 @@ public class CustomerController implements IController{
             );
             Customer savedCustomer = customerDAO.create(customer);
             
-            // 9. Create Subscription
+            // 9. Create Subscription (using data from external system via SerialLink)
             Subscription subscription = new Subscription(
                 savedCustomer,
                 plan,
-                SubscriptionStatus.TRIALING,
+                SubscriptionStatus.ACTIVE,  // Already subscribed in external system
                 OffsetDateTime.now(),
-                OffsetDateTime.now().plusMonths(1),
+                serialLink.getNextPaymentDate(),  // From external system
                 AnchorPolicy.ANNIVERSARY
             );
             subscriptionDAO.create(subscription);
@@ -167,12 +168,6 @@ public class CustomerController implements IController{
         public void delete (Context ctx){
 
         }
-
-    public User getUserByEmail (String email){
-        try (EntityManager em = emf.createEntityManager()) {
-            return em.find(User.class, email);
-        }
-    }
 
     /**
      * GET /api/customers/{id}/sms-balance
