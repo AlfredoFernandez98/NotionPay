@@ -32,13 +32,17 @@ public class Product {
     private Currency currency;
 
     private String description;
+    
+    @Column(name = "sms_count")
+    private Integer smsCount;
 
-    public Product(ProductType productType, String name, Integer priceCents, Currency currency, String description) {
+    public Product(ProductType productType, String name, Integer priceCents, Currency currency, String description, Integer smsCount) {
         this.productType = productType;
         this.name = name;
         this.priceCents = priceCents;
         this.currency = currency;
         this.description = description;
+        this.smsCount = smsCount;
     }
 }
 

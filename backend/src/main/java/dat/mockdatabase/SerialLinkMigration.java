@@ -2,9 +2,11 @@ package dat.mockdatabase;
 
 import dat.config.HibernateConfig;
 import dat.entities.Plan;
+import dat.entities.Product;
 import dat.entities.SerialLink;
 import dat.enums.Currency;
 import dat.enums.Period;
+import dat.enums.ProductType;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
@@ -21,9 +23,13 @@ public class SerialLinkMigration {
         try {
             em.getTransaction().begin();
             
+            // Create Plans
             createPlan(em, "Basic Monthly", Period.MONTHLY, 49900, "Basic features");
             createPlan(em, "Professional Monthly", Period.MONTHLY, 99900, "Professional features");
             createPlan(em, "Enterprise Yearly", Period.YEARLY, 999900, "Enterprise features");
+            
+            // Create SMS Products
+            createProduct(em, ProductType.SMS, "100 SMS Credits", 50000, "Buy 100 SMS messages for emergency notifications", 100);
             
             // Mock data: Customers from external system with payment due dates
             java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
@@ -34,7 +40,7 @@ public class SerialLinkMigration {
             createSerialLink(em, 999999999, "cus_ext_e_005", "eve@company-e.com", "Basic Monthly", 100, now.plusDays(5));
             
             em.getTransaction().commit();
-            System.out.println("Created 3 Plans and 5 SerialLinks");
+            System.out.println("Created 3 Plans, 1 Product, and 5 SerialLinks");
             
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
@@ -58,6 +64,11 @@ public class SerialLinkMigration {
         em.persist(plan);
     }
     
+    private static void createProduct(EntityManager em, ProductType productType, String name, int priceCents, String description, int smsCount) {
+        Product product = new Product(productType, name, priceCents, Currency.DKK, description, smsCount);
+        em.persist(product);
+    }
+    
     private static void createSerialLink(EntityManager em, int serialNumber, String externalCustomerId, 
                                          String expectedEmail, String planName, int initialSmsBalance, 
                                          java.time.OffsetDateTime nextPaymentDate) {
@@ -76,6 +87,7 @@ public class SerialLinkMigration {
             em.createQuery("DELETE FROM SmsBalance").executeUpdate();
             em.createQuery("DELETE FROM SerialLink").executeUpdate();
             em.createQuery("DELETE FROM Plan").executeUpdate();
+            em.createQuery("DELETE FROM Product").executeUpdate();
             em.getTransaction().commit();
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {

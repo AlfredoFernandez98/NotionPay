@@ -10,5 +10,6 @@ public class ProductDTO {
     public Integer priceCents;
     public Currency currency;
     public String description;
+    public Integer smsCount;
 }
 

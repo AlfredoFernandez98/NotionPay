@@ -17,7 +17,8 @@ import org.slf4j.LoggerFactory;
 
 public class ApplicationConfig {
 
-    private static Routes routes = new Routes();
+    private static Routes routes = new
+            Routes();
     private static ObjectMapper jsonMapper = new Utils().getObjectMapper();
     private static SecurityController securityController = SecurityController.getInstance();
     private static AccessController accessController = new AccessController();

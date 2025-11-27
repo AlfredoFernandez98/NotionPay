@@ -40,12 +40,13 @@ public class CustomerController implements IController<CustomerDTO>{
     }
     @Override
     public void read(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
 
     }
 
     @Override
     public void readAll(Context ctx) {
-
+        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
     }
 
     @Override
@@ -161,11 +162,13 @@ public class CustomerController implements IController<CustomerDTO>{
 
         @Override
         public void update (Context ctx){
+            ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
 
         }
 
         @Override
         public void delete (Context ctx){
+            ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
 
         }
 

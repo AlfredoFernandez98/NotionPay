@@ -53,7 +53,6 @@ public class HibernateConfig {
         
         // Product entities
         configuration.addAnnotatedClass(dat.entities.Product.class);
-        configuration.addAnnotatedClass(dat.entities.SmsProduct.class);
         configuration.addAnnotatedClass(dat.entities.SmsBalance.class);
         
         // Payment entities

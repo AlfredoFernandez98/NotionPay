@@ -68,16 +68,19 @@ public class PlanController implements IController<PlanDTO> {
 
     @Override
     public void create(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
 
     }
 
     @Override
     public void update(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
 
     }
 
     @Override
     public void delete(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
 
     }
     /**
