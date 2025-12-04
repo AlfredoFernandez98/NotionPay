@@ -246,7 +246,8 @@ class CustomerDAOTest {
                 "EXT-CUST-001",
                 "test@example.com",
                 "BASIC",
-                100
+                100,
+                java.time.OffsetDateTime.now().plusDays(30)
             );
             em.persist(testSerialLink);
 

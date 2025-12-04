@@ -439,7 +439,14 @@ class CustomerIntegrationTest {
             testPlan = new Plan("Test Plan", Period.MONTHLY, 49900, Currency.DKK, "Test plan", true);
             em.persist(testPlan);
 
-            testSerialLink = new SerialLink(12345678, "EXT-TEST-001", testUser.getEmail(), testPlan.getName(), 500);
+            testSerialLink = new SerialLink(
+                12345678, 
+                "EXT-TEST-001", 
+                testUser.getEmail(), 
+                testPlan.getName(), 
+                500,
+                java.time.OffsetDateTime.now().plusDays(30)
+            );
             em.persist(testSerialLink);
 
             em.flush();
@@ -451,7 +458,14 @@ class CustomerIntegrationTest {
                                         String expectedEmail, String planName, Integer initialSmsBalance) {
         try (EntityManager em = emf.createEntityManager()) {
             em.getTransaction().begin();
-            SerialLink serialLink = new SerialLink(serialNumber, externalCustomerId, expectedEmail, planName, initialSmsBalance);
+            SerialLink serialLink = new SerialLink(
+                serialNumber, 
+                externalCustomerId, 
+                expectedEmail, 
+                planName, 
+                initialSmsBalance,
+                java.time.OffsetDateTime.now().plusDays(30)
+            );
             em.persist(serialLink);
             em.flush();
             em.getTransaction().commit();
