@@ -2,10 +2,7 @@ package dat.routes;
 
 
 import dat.config.HibernateConfig;
-import dat.controllers.impl.CustomerController;
-import dat.controllers.impl.PlanController;
-import dat.controllers.impl.ProductController;
-import dat.controllers.impl.SubscriptionController;
+import dat.controllers.impl.*;
 import dat.security.enums.Role;
 import dat.services.SerialLinkVerificationService;
 import io.javalin.apibuilder.EndpointGroup;
@@ -20,6 +17,7 @@ public class Routes {
     private static final PlanController planController = new PlanController(emf);
     private static final SubscriptionController subscriptionController = new SubscriptionController(emf);
     private static final ProductController productController = new ProductController(emf);
+    private static final PaymentController paymentController = new PaymentController(emf);
 
     public EndpointGroup getRoutes() {
         return () -> {
@@ -46,7 +44,16 @@ public class Routes {
             path("/products", () -> {
                 get("/", productController::readAll, Role.ANYONE);  // Get all SMS products
                 get("/{id}", productController::read, Role.ANYONE); // Get one SMS product
-
+            });
+            
+            path("/payment-methods", () -> {
+                post("/", paymentController::addPaymentMethod, Role.USER);  // Add payment method (save card)
+            });
+            
+            path("/payments", () -> {
+                post("/", paymentController::create, Role.USER);  // Process payment
+                get("/{id}", paymentController::read, Role.USER);  // Get payment by ID
+                get("/{paymentId}/receipt", paymentController::getReceipt, Role.USER);  // Get receipt
             });
         };
     }

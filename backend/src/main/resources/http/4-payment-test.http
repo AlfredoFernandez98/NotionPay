@@ -1,0 +1,274 @@
+### ============================================
+### Sprint 3 - Payment Flow Tests with Stripe
+### ============================================
+### Prerequisites:
+### 1. Server running on http://localhost:7070
+### 2. Customer registered and logged in
+### 3. Replace YOUR_TOKEN_HERE with actual JWT token from login
+### 4. Replace customerId, paymentMethodId as needed
+### ============================================
+
+### 1. Register a new customer (if needed)
+POST http://localhost:7070/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "payment-test@company.com",
+  "password": "SecurePass123!",
+  "companyName": "Payment Test Corp",
+  "serialNumber": 101010101
+}
+
+### 2. Login to get JWT token
+POST http://localhost:7070/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "payment-test@company.com",
+  "password": "SecurePass123!"
+}
+
+### Expected response:
+### {
+###   "token": "eyJhbGciOiJIUz...",
+###   "email": "payment-test@company.com",
+###   "sessionID": 1
+### }
+### ⚠️ COPY THE TOKEN AND REPLACE "YOUR_TOKEN_HERE" BELOW
+
+### ============================================
+### PAYMENT METHOD TESTS
+### ============================================
+
+### 3. Add payment method (Save card with Stripe)
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "cardNumber": "4242424242424242",
+  "expMonth": 12,
+  "expYear": 2025,
+  "cvc": "123",
+  "isDefault": true
+}
+
+### Expected response:
+### {
+###   "msg": "Payment method added successfully",
+###   "paymentMethodId": 1,
+###   "brand": "visa",
+###   "last4": "4242"
+### }
+
+### 4. Test with different card (Mastercard)
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "cardNumber": "5555555555554444",
+  "expMonth": 6,
+  "expYear": 2026,
+  "cvc": "456",
+  "isDefault": false
+}
+
+### 5. Test DECLINED card (should fail)
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "cardNumber": "4000000000000002",
+  "expMonth": 12,
+  "expYear": 2025,
+  "cvc": "123",
+  "isDefault": false
+}
+
+### Expected: 400 error with message about card decline
+
+### ============================================
+### PAYMENT PROCESSING TESTS
+### ============================================
+
+### 6. Process payment for subscription (charge 9900 cents = 99.00 DKK)
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "amount": 9900,
+  "currency": "dkk",
+  "description": "Monthly subscription payment - Basic Plan",
+  "subscriptionId": 1
+}
+
+### Expected response:
+### {
+###   "msg": "Payment processed successfully",
+###   "paymentId": 1,
+###   "status": "COMPLETED",
+###   "amount": 9900,
+###   "currency": "dkk",
+###   "receiptId": 1,
+###   "receiptNumber": "RCP-1234567890"
+### }
+
+### 7. Process payment for SMS product purchase (2000 cents = 20.00 DKK)
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "amount": 2000,
+  "currency": "dkk",
+  "description": "SMS Package - 500 credits",
+  "productId": 1
+}
+
+### 8. Test payment with INSUFFICIENT FUNDS card
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "amount": 5000,
+  "currency": "dkk",
+  "description": "Test insufficient funds"
+}
+
+### ============================================
+### RETRIEVE PAYMENT DATA
+### ============================================
+
+### 9. Get specific payment by ID
+GET http://localhost:7070/api/payments/1
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected response:
+### {
+###   "id": 1,
+###   "customerId": 1,
+###   "paymentMethodId": 1,
+###   "subscriptionId": 1,
+###   "productId": null,
+###   "status": "COMPLETED",
+###   "priceCents": 9900,
+###   "currency": "DKK",
+###   "processorIntentId": "pi_...",
+###   "createdAt": "2025-12-08T..."
+### }
+
+### 10. Get all payments for customer
+GET http://localhost:7070/api/customers/1/payments
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected: Array of payment DTOs
+
+### 11. Get receipt for payment
+GET http://localhost:7070/api/payments/1/receipt
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Expected response:
+### {
+###   "id": 1,
+###   "receiptNumber": "RCP-1234567890",
+###   "priceCents": 9900,
+###   "paidAt": "2025-12-08T...",
+###   "status": "ISSUED",
+###   "customerEmail": "payment-test@company.com",
+###   "companyName": "Payment Test Corp",
+###   "pmBrand": "visa",
+###   "pmLast4": "4242",
+###   "processorReceiptUrl": "https://pay.stripe.com/receipts/...",
+###   ...
+### }
+
+### ============================================
+### ERROR HANDLING TESTS
+### ============================================
+
+### 12. Test with invalid customer ID
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 99999,
+  "paymentMethodId": 1,
+  "amount": 1000,
+  "currency": "dkk"
+}
+
+### Expected: 404 Not Found
+
+### 13. Test with invalid payment method ID
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "paymentMethodId": 99999,
+  "amount": 1000,
+  "currency": "dkk"
+}
+
+### Expected: 404 Not Found
+
+### 14. Test with invalid card number
+POST http://localhost:7070/api/payment-methods
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "customerId": 1,
+  "cardNumber": "1234",
+  "expMonth": 12,
+  "expYear": 2025,
+  "cvc": "123"
+}
+
+### Expected: 400 Bad Request with Stripe error
+
+### 15. Test without authentication token
+POST http://localhost:7070/api/payments
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "amount": 1000,
+  "currency": "dkk"
+}
+
+### Expected: 401 Unauthorized
+
+### ============================================
+### TEST CARD NUMBERS FOR STRIPE
+### ============================================
+### SUCCESS:
+### 4242424242424242 - Visa (always succeeds)
+### 5555555555554444 - Mastercard (always succeeds)
+### 378282246310005  - American Express
+###
+### FAILURES:
+### 4000000000000002 - Card declined
+### 4000000000009995 - Insufficient funds
+### 4000000000000069 - Expired card
+### 4000000000000127 - Incorrect CVC
+###
+### For more test cards: https://stripe.com/docs/testing
+### ============================================
+

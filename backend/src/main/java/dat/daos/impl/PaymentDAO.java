@@ -2,20 +2,29 @@ package dat.daos.impl;
 
 import dat.daos.IDAO;
 import dat.entities.Payment;
+import dat.enums.PaymentStatus;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.NoResultException;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * DAO for Payment entity
- * TODO: Implement IDAO interface methods (create, getById, getAll, update, delete)
- * TODO: Add custom business methods like getByCustomerId, getByStatus, etc.
+ * Implements IDAO interface and provides custom Payment operations
+ * Follows Singleton pattern with getInstance()
  */
 public class PaymentDAO implements IDAO<Payment> {
     private static PaymentDAO instance;
     private static EntityManagerFactory emf;
 
+    /**
+     * Get singleton instance of PaymentDAO
+     * @param _emf EntityManagerFactory to use
+     * @return PaymentDAO instance
+     */
     public static PaymentDAO getInstance(EntityManagerFactory _emf) {
         if (instance == null) {
             emf = _emf;
@@ -30,37 +39,51 @@ public class PaymentDAO implements IDAO<Payment> {
 
     @Override
     public Payment create(Payment payment) {
-        // TODO: Implement create
-        // Pattern: try-with-resources, begin transaction, persist, commit
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            em.persist(payment);
+            em.getTransaction().commit();
+            return payment;
+        }
     }
 
     @Override
     public Optional<Payment> getById(Long id) {
-        // TODO: Implement getById
-        // Pattern: try-with-resources, em.find()
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            Payment payment = em.find(Payment.class, id);
+            return Optional.ofNullable(payment);
+        }
     }
 
     @Override
     public Set<Payment> getAll() {
-        // TODO: Implement getAll
-        // Pattern: TypedQuery with "SELECT p FROM Payment p"
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery("SELECT p FROM Payment p", Payment.class)
+                    .getResultList()
+                    .stream()
+                    .collect(Collectors.toSet());
+        }
     }
 
     @Override
     public void update(Payment payment) {
-        // TODO: Implement update
-        // Pattern: try-with-resources, begin transaction, merge, commit
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            em.merge(payment);
+            em.getTransaction().commit();
+        }
     }
 
     @Override
     public void delete(Long id) {
-        // TODO: Implement delete
-        // Pattern: find entity first, then remove
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            em.getTransaction().begin();
+            Payment payment = em.find(Payment.class, id);
+            if (payment != null) {
+                em.remove(payment);
+            }
+            em.getTransaction().commit();
+        }
     }
 
     @Override
@@ -68,22 +91,97 @@ public class PaymentDAO implements IDAO<Payment> {
         return Optional.empty();
     }
 
-    // ========== CUSTOM BUSINESS METHODS ==========
+    // ==================== Custom Payment Methods ====================
 
     /**
      * Get all payments for a specific customer
-     * TODO: Implement this query
+     * @param customerId The customer ID
+     * @return Set of payments for the customer
      */
     public Set<Payment> getByCustomerId(Long customerId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT p FROM Payment p WHERE p.customer.id = :customerId ORDER BY p.createdAt DESC",
+                    Payment.class
+            )
+            .setParameter("customerId", customerId)
+            .getResultList()
+            .stream()
+            .collect(Collectors.toSet());
+        }
     }
 
     /**
      * Get payments by status
-     * TODO: Implement this query
+     * @param status The payment status
+     * @return Set of payments with the given status
      */
-    public Set<Payment> getByStatus(String status) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public Set<Payment> getByStatus(PaymentStatus status) {
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT p FROM Payment p WHERE p.status = :status ORDER BY p.createdAt DESC",
+                    Payment.class
+            )
+            .setParameter("status", status)
+            .getResultList()
+            .stream()
+            .collect(Collectors.toSet());
+        }
+    }
+
+    /**
+     * Get payment by Stripe PaymentIntent ID
+     * @param processorIntentId Stripe PaymentIntent ID
+     * @return Optional containing the Payment, or empty if not found
+     */
+    public Optional<Payment> getByProcessorIntentId(String processorIntentId) {
+        try (EntityManager em = emf.createEntityManager()) {
+            Payment payment = em.createQuery(
+                    "SELECT p FROM Payment p WHERE p.processorIntentId = :intentId",
+                    Payment.class
+            )
+            .setParameter("intentId", processorIntentId)
+            .getSingleResult();
+            return Optional.of(payment);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Get payments for a specific subscription
+     * @param subscriptionId The subscription ID
+     * @return Set of payments for the subscription
+     */
+    public Set<Payment> getBySubscriptionId(Long subscriptionId) {
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT p FROM Payment p WHERE p.subscription.id = :subscriptionId ORDER BY p.createdAt DESC",
+                    Payment.class
+            )
+            .setParameter("subscriptionId", subscriptionId)
+            .getResultList()
+            .stream()
+            .collect(Collectors.toSet());
+        }
+    }
+
+    /**
+     * Get payments for a specific product purchase
+     * @param productId The product ID
+     * @return Set of payments for the product
+     */
+    public Set<Payment> getByProductId(Long productId) {
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT p FROM Payment p WHERE p.product.id = :productId ORDER BY p.createdAt DESC",
+                    Payment.class
+            )
+            .setParameter("productId", productId)
+            .getResultList()
+            .stream()
+            .collect(Collectors.toSet());
+        }
     }
 }
 

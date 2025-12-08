@@ -27,6 +27,7 @@
         <token.security.version>1.0.1</token.security.version>
         <rest-assured.version>5.5.0</rest-assured.version>
         <json.version>20240303</json.version>
+        <stripe.version>26.7.0</stripe.version>
 
         <!-- DATABASE PROJECT NAME ON SERVER  -->
         <db.name>jpademo</db.name>
@@ -173,6 +174,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
+        </dependency>
+        
+        <!-- Stripe Java SDK for payment processing -->
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>${stripe.version}</version>
         </dependency>
     </dependencies>
     <build>
