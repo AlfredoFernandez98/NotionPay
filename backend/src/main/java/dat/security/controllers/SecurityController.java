@@ -86,41 +86,32 @@ public class SecurityController implements ISecurityController {
                 UserDTO verifiedUser = securityDAO.getVerifiedUser(user.getEmail(), user.getPassword());
                 String token = createToken(verifiedUser);
 
-                // 1) Find the customer by email (you need such a method in CustomerDAO)
                 Customer customer = customerDAO.getByUserEmail(verifiedUser.getEmail())
                       .orElseThrow(()-> new EntityNotFoundException("Customer with email " + verifiedUser.getEmail() + " not found"));
 
-                // 2) Extract expiry from token or compute same as TOKEN_EXPIRE_TIME
+
                 var expiresAt= java.time.OffsetDateTime.now().plusHours(2);
 
-                // 3) Get IP & User-Agent from ctx
                 String ip = ctx.req().getRemoteAddr();
                 String userAgent =  ctx.header("User-Agent");
                 if(userAgent == null){
                     userAgent = "unknown";
                 }
 
-                // 4) Create a DB session
-
                 Session session = new Session(customer,token,expiresAt,ip,userAgent);
                 sessionDAO.create(session);
-
                 Map<String, Object> metadata = Map.of(
                         "ip"+ ctx.ip(),
                         "device" + userAgent
                 );
-
                 ActivityLog activityLog = new ActivityLog(
                         customer,
                         session,
                         ActivityLogType.LOGIN,
                         ActivityLogStatus.SUCCESS,
                         metadata
-
                 );
-
                 activityLogDAO.create(activityLog);
-
                 ctx.status(200).json(returnObject
                         .put("token", token)
                         .put("email", verifiedUser.getEmail())

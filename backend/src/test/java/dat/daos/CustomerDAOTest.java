@@ -112,6 +112,7 @@ class CustomerDAOTest {
         assertEquals(testUser.getEmail(), result.get().getUser().getEmail());
     }
 
+
     /**
      * Test getByUserEmail() when customer doesn't exist
      * Verifies that an empty Optional is returned for non-existent email
