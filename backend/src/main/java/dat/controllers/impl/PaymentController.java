@@ -13,6 +13,7 @@ import dat.enums.Currency;
 import dat.enums.PaymentStatus;
 import dat.enums.ReceiptStatus;
 import dat.services.StripePaymentService;
+import dat.services.SubscriptionService;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class PaymentController implements IController<PaymentDTO> {
     private final ProductDAO productDAO;
     private final ReceiptDAO receiptDAO;
     private final StripePaymentService stripeService;
+    private final SubscriptionService subscriptionService;
 
     public PaymentController(EntityManagerFactory emf) {
         this.paymentDAO = PaymentDAO.getInstance(emf);
@@ -46,6 +48,7 @@ public class PaymentController implements IController<PaymentDTO> {
         this.productDAO = ProductDAO.getInstance(emf);
         this.receiptDAO = ReceiptDAO.getInstance(emf);
         this.stripeService = StripePaymentService.getInstance();
+        this.subscriptionService = SubscriptionService.getInstance(emf);
     }
 
     /**
@@ -190,6 +193,13 @@ public class PaymentController implements IController<PaymentDTO> {
                     logger.info("Receipt generated: {}", receipt.getReceiptNumber());
                 }
 
+                // Update subscription after successful payment
+                if (subscription != null && status == PaymentStatus.COMPLETED) {
+                    subscriptionService.updateSubscriptionAfterPayment(subscription, payment);
+                    logger.info("Subscription {} updated with new billing date: {}", 
+                        subscription.getId(), subscription.getNextBillingDate());
+                }
+
                 logger.info("Payment created: {} with status: {}", payment.getId(), status);
 
                 ObjectNode response = objectMapper.createObjectNode()
@@ -200,6 +210,13 @@ public class PaymentController implements IController<PaymentDTO> {
                         .put("currency", currencyStr)
                         .put("receiptId", receipt != null ? receipt.getId() : null)
                         .put("receiptNumber", receipt != null ? receipt.getReceiptNumber() : null);
+                
+                // Include next billing date if subscription payment
+                if (subscription != null) {
+                    response.put("subscriptionId", subscription.getId());
+                    response.put("nextBillingDate", subscription.getNextBillingDate() != null ? 
+                        subscription.getNextBillingDate().toString() : null);
+                }
                 
                 ctx.status(201).json(response);
 
