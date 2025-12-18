@@ -42,6 +42,7 @@ public class SerialLinkMigration {
             em.getTransaction().commit();
             System.out.println("Created 3 Plans, 1 Product, and 5 SerialLinks");
             
+            
         } catch (Exception e) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
