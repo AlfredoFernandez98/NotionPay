@@ -199,6 +199,33 @@ public class SecurityController implements ISecurityController {
                 // Create JWT token
                 String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
                 
+                // Create Session for activity logging
+                java.time.OffsetDateTime expiresAt = java.time.OffsetDateTime.now().plusHours(24);
+                String ip = ctx.ip();
+                String userAgent = ctx.header("User-Agent");
+                if (userAgent == null) {
+                    userAgent = "unknown";
+                }
+                Session session = new Session(customer, token, expiresAt, ip, userAgent);
+                sessionDAO.create(session);
+                
+                // Log subscription creation activity
+                Map<String, Object> subscriptionMetadata = new HashMap<>();
+                subscriptionMetadata.put("subscriptionId", subscription.getId());
+                subscriptionMetadata.put("planId", plan.getId());
+                subscriptionMetadata.put("planName", plan.getName());
+                subscriptionMetadata.put("startDate", subscription.getStartDate().toString());
+                subscriptionMetadata.put("nextBillingDate", subscription.getNextBillingDate().toString());
+                
+                ActivityLog subscriptionLog = new ActivityLog(
+                    customer,
+                    session,
+                    ActivityLogType.SUBSCRIPTION_CREATED,
+                    ActivityLogStatus.SUCCESS,
+                    subscriptionMetadata
+                );
+                activityLogDAO.create(subscriptionLog);
+                
                 // Return success response
                 ctx.status(HttpStatus.CREATED).json(objectMapper.createObjectNode()
                         .put("token", token)

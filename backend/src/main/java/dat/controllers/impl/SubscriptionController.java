@@ -1,24 +1,36 @@
 package dat.controllers.impl;
 
 import dat.controllers.IController;
+import dat.daos.impl.ActivityLogDAO;
+import dat.daos.impl.SessionDAO;
 import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.SubscriptionDTO;
+import dat.entities.ActivityLog;
+import dat.entities.Session;
 import dat.entities.Subscription;
+import dat.enums.ActivityLogStatus;
+import dat.enums.ActivityLogType;
 import dat.enums.SubscriptionStatus;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class SubscriptionController implements IController<SubscriptionDTO> {
     
     private final SubscriptionDAO subscriptionDAO;
+    private final ActivityLogDAO activityLogDAO;
+    private final SessionDAO sessionDAO;
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionController.class);
     
     public SubscriptionController(EntityManagerFactory emf) {
         this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
+        this.activityLogDAO = ActivityLogDAO.getInstance(emf);
+        this.sessionDAO = SessionDAO.getInstance(emf);
     }
 
     /**
@@ -93,6 +105,25 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             subscription.setEndDate(java.time.OffsetDateTime.now());
             subscriptionDAO.update(subscription);
             
+            // Log activity
+            Session session = getSessionFromContext(ctx);
+            if (session != null) {
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("subscriptionId", subscription.getId());
+                metadata.put("planId", subscription.getPlan().getId());
+                metadata.put("planName", subscription.getPlan().getName());
+                metadata.put("canceledAt", subscription.getEndDate().toString());
+                
+                ActivityLog activityLog = new ActivityLog(
+                    subscription.getCustomer(),
+                    session,
+                    ActivityLogType.SUBSCRIPTION_CANCELLED,
+                    ActivityLogStatus.SUCCESS,
+                    metadata
+                );
+                activityLogDAO.create(activityLog);
+            }
+            
             SubscriptionDTO dto = convertToDto(subscription);
             ctx.status(200).json(dto);
             logger.info("Canceled subscription ID: {}", id);
@@ -141,5 +172,21 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
         dto.nextBillingDate = subscription.getNextBillingDate();
         dto.anchorPolicy = subscription.getAnchorPolicy();
         return dto;
+    }
+
+    /**
+     * Helper method to get session from JWT token in context
+     */
+    private Session getSessionFromContext(Context ctx) {
+        try {
+            String token = ctx.header("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                return sessionDAO.findByToken(token).orElse(null);
+            }
+        } catch (Exception e) {
+            logger.warn("Could not retrieve session from context: {}", e.getMessage());
+        }
+        return null;
     }
 }

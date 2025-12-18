@@ -9,6 +9,8 @@ import dat.controllers.IController;
 import dat.daos.impl.*;
 import dat.dtos.PaymentDTO;
 import dat.entities.*;
+import dat.enums.ActivityLogStatus;
+import dat.enums.ActivityLogType;
 import dat.enums.Currency;
 import dat.enums.PaymentStatus;
 import dat.enums.ReceiptStatus;
@@ -37,6 +39,8 @@ public class PaymentController implements IController<PaymentDTO> {
     private final SubscriptionDAO subscriptionDAO;
     private final ProductDAO productDAO;
     private final ReceiptDAO receiptDAO;
+    private final ActivityLogDAO activityLogDAO;
+    private final SessionDAO sessionDAO;
     private final StripePaymentService stripeService;
     private final SubscriptionService subscriptionService;
 
@@ -47,6 +51,8 @@ public class PaymentController implements IController<PaymentDTO> {
         this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
         this.productDAO = ProductDAO.getInstance(emf);
         this.receiptDAO = ReceiptDAO.getInstance(emf);
+        this.activityLogDAO = ActivityLogDAO.getInstance(emf);
+        this.sessionDAO = SessionDAO.getInstance(emf);
         this.stripeService = StripePaymentService.getInstance();
         this.subscriptionService = SubscriptionService.getInstance(emf);
     }
@@ -103,6 +109,25 @@ public class PaymentController implements IController<PaymentDTO> {
 
             paymentMethodDAO.create(paymentMethod);
             logger.info("Payment method added for customer: {}", customerId);
+
+            // Log activity
+            Session session = getSessionFromContext(ctx);
+            if (session != null) {
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("paymentMethodId", paymentMethod.getId());
+                metadata.put("brand", paymentMethod.getBrand());
+                metadata.put("last4", paymentMethod.getLast4());
+                metadata.put("isDefault", isDefault);
+                
+                ActivityLog activityLog = new ActivityLog(
+                    customer,
+                    session,
+                    ActivityLogType.ADD_CARD,
+                    ActivityLogStatus.SUCCESS,
+                    metadata
+                );
+                activityLogDAO.create(activityLog);
+            }
 
             ObjectNode response = objectMapper.createObjectNode()
                     .put("msg", "Payment method added successfully")
@@ -198,6 +223,51 @@ public class PaymentController implements IController<PaymentDTO> {
                     subscriptionService.updateSubscriptionAfterPayment(subscription, payment);
                     logger.info("Subscription {} updated with new billing date: {}", 
                         subscription.getId(), subscription.getNextBillingDate());
+                }
+
+                // Log payment activity
+                Session session = getSessionFromContext(ctx);
+                if (session != null) {
+                    Map<String, Object> paymentMetadata = new HashMap<>();
+                    paymentMetadata.put("paymentId", payment.getId());
+                    paymentMetadata.put("amount", amountCents);
+                    paymentMetadata.put("currency", currencyStr);
+                    paymentMetadata.put("status", status.toString());
+                    if (subscription != null) {
+                        paymentMetadata.put("subscriptionId", subscription.getId());
+                    }
+                    if (product != null) {
+                        paymentMetadata.put("productId", product.getId());
+                    }
+                    
+                    ActivityLog activityLog = new ActivityLog(
+                        customer,
+                        session,
+                        ActivityLogType.PAYMENT,
+                        status == PaymentStatus.COMPLETED ? ActivityLogStatus.SUCCESS : ActivityLogStatus.FAILURE,
+                        paymentMetadata
+                    );
+                    activityLogDAO.create(activityLog);
+                    
+                    // Log subscription renewal if this was a subscription payment
+                    if (subscription != null && status == PaymentStatus.COMPLETED) {
+                        Map<String, Object> renewalMetadata = new HashMap<>();
+                        renewalMetadata.put("subscriptionId", subscription.getId());
+                        renewalMetadata.put("planId", subscription.getPlan().getId());
+                        renewalMetadata.put("planName", subscription.getPlan().getName());
+                        renewalMetadata.put("previousBillingDate", subscription.getNextBillingDate().minusMonths(1).toString());
+                        renewalMetadata.put("nextBillingDate", subscription.getNextBillingDate().toString());
+                        renewalMetadata.put("paymentId", payment.getId());
+                        
+                        ActivityLog renewalLog = new ActivityLog(
+                            customer,
+                            session,
+                            ActivityLogType.SUBSCRIPTION_RENEWED,
+                            ActivityLogStatus.SUCCESS,
+                            renewalMetadata
+                        );
+                        activityLogDAO.create(renewalLog);
+                    }
                 }
 
                 logger.info("Payment created: {} with status: {}", payment.getId(), status);
@@ -319,6 +389,30 @@ public class PaymentController implements IController<PaymentDTO> {
             logger.warn("Could not retrieve Stripe receipt URL: {}", e.getMessage());
         }
         
+        // Build detailed metadata
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("customerId", payment.getCustomer().getId());
+        metadata.put("paymentId", payment.getId());
+        metadata.put("currency", payment.getCurrency().toString());
+        metadata.put("paymentStatus", payment.getStatus().toString());
+        
+        // Add subscription info if available
+        if (payment.getSubscription() != null) {
+            metadata.put("subscriptionId", payment.getSubscription().getId());
+            metadata.put("planName", payment.getSubscription().getPlan().getName());
+            metadata.put("billingPeriod", payment.getSubscription().getPlan().getPeriod().toString());
+        }
+        
+        // Add product info if available
+        if (payment.getProduct() != null) {
+            metadata.put("productId", payment.getProduct().getId());
+            metadata.put("productName", payment.getProduct().getName());
+            metadata.put("productType", payment.getProduct().getProductType().toString());
+            if (payment.getProduct().getSmsCount() != null) {
+                metadata.put("smsCount", payment.getProduct().getSmsCount());
+            }
+        }
+        
         return new Receipt(
                 payment,
                 receiptNumber,
@@ -332,7 +426,7 @@ public class PaymentController implements IController<PaymentDTO> {
                 payment.getPaymentMethod().getLast4(),
                 payment.getPaymentMethod().getExpYear(),
                 paymentIntent.getId(),
-                new HashMap<>()
+                metadata
         );
     }
 
@@ -349,6 +443,22 @@ public class PaymentController implements IController<PaymentDTO> {
         dto.processorIntentId = payment.getProcessorIntentId();
         dto.createdAt = payment.getCreatedAt();
         return dto;
+    }
+
+    /**
+     * Helper method to get session from JWT token in context
+     */
+    private Session getSessionFromContext(Context ctx) {
+        try {
+            String token = ctx.header("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                return sessionDAO.findByToken(token).orElse(null);
+            }
+        } catch (Exception e) {
+            logger.warn("Could not retrieve session from context: {}", e.getMessage());
+        }
+        return null;
     }
 
     // ==================== IController Interface ====================

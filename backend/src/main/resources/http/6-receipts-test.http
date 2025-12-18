@@ -1,0 +1,141 @@
+### ========================================
+### 6. RECEIPTS TEST
+### Test receipt retrieval endpoints
+### ========================================
+
+### Variables
+@baseUrl = http://localhost:7070
+@jwt = {{login_response.response.body.token}}
+
+### ========================================
+### STEP 1: Login
+### ========================================
+# @name login_response
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@company-a.com",
+  "password": "password123"
+}
+
+### ========================================
+### STEP 2: Get All Receipts for Customer
+### ========================================
+GET {{baseUrl}}/api/customers/1/receipts
+Authorization: Bearer {{jwt}}
+
+### Expected Response:
+# [
+#   {
+#     "id": 1,
+#     "paymentId": 1,
+#     "receiptNumber": "RCP-1734523456789",
+#     "priceCents": 9900,
+#     "paidAt": "2025-12-18T10:00:00Z",
+#     "status": "PAID",
+#     "processorReceiptUrl": "https://stripe.com/receipt/...",
+#     "customerEmail": "alice@company-a.com",
+#     "companyName": "Company A",
+#     "pmBrand": "visa",
+#     "pmLast4": "4242",
+#     "pmExpYear": 2026,
+#     "processorIntentId": "pi_xxx",
+#     "metadata": {
+#       "customerId": 1,
+#       "paymentId": 1,
+#       "currency": "DKK",
+#       "subscriptionId": 1,
+#       "planName": "Basic Monthly"
+#     },
+#     "createdAt": "2025-12-18T10:00:00Z"
+#   }
+# ]
+
+### ========================================
+### STEP 3: Get Receipt by ID
+### ========================================
+GET {{baseUrl}}/api/receipts/1
+Authorization: Bearer {{jwt}}
+
+### Expected Response: Single receipt object
+
+### ========================================
+### STEP 4: Get Receipt by Receipt Number
+### ========================================
+GET {{baseUrl}}/api/receipts/number/RCP-1734523456789
+Authorization: Bearer {{jwt}}
+
+### Expected Response: Single receipt object
+
+### ========================================
+### STEP 5: Get Receipt from Payment Endpoint
+### (Alternative way - already existed)
+### ========================================
+GET {{baseUrl}}/api/payments/1/receipt
+Authorization: Bearer {{jwt}}
+
+### Expected Response: Single receipt object
+
+### ========================================
+### VERIFICATION CHECKLIST
+### ========================================
+
+# After creating a payment:
+# 1. ✅ Receipt is automatically generated
+# 2. ✅ Receipt has unique receipt number (RCP-timestamp)
+# 3. ✅ Receipt contains all payment details
+# 4. ✅ Receipt contains customer information
+# 5. ✅ Receipt contains payment method details
+# 6. ✅ Receipt contains Stripe receipt URL (if available)
+# 7. ✅ Receipt metadata includes subscription/product info
+# 8. ✅ Receipts are sorted by date (newest first)
+
+### ========================================
+### RECEIPT METADATA CONTENTS
+### ========================================
+
+# For Subscription Payments:
+# - customerId
+# - paymentId
+# - currency
+# - paymentStatus
+# - subscriptionId
+# - planName
+# - billingPeriod
+
+# For Product Purchases:
+# - customerId
+# - paymentId
+# - currency
+# - paymentStatus
+# - productId
+# - productName
+# - productType
+# - smsCount (for SMS products)
+
+### ========================================
+### NOTES
+### ========================================
+
+# Receipt Features:
+# ✅ Automatic generation on successful payment
+# ✅ Unique receipt numbers
+# ✅ Complete payment information
+# ✅ Customer details
+# ✅ Payment method information
+# ✅ Stripe receipt URL integration
+# ✅ Rich metadata with subscription/product details
+# ✅ List all receipts for a customer
+# ✅ Search by receipt ID
+# ✅ Search by receipt number
+# ✅ Sorted by date (newest first)
+
+# Future Enhancements (if needed):
+# - Pagination for customers with many receipts
+# - Date range filtering
+# - Amount range filtering
+# - Export to PDF
+# - Email receipt functionality
+
+### ========================================

@@ -18,6 +18,7 @@ public class Routes {
     private static final SubscriptionController subscriptionController = new SubscriptionController(emf);
     private static final ProductController productController = new ProductController(emf);
     private static final PaymentController paymentController = new PaymentController(emf);
+    private static final ReceiptController receiptController = new ReceiptController(emf);
 
     public EndpointGroup getRoutes() {
         return () -> {
@@ -27,6 +28,7 @@ public class Routes {
                 get("/{id}", customerController::read, Role.USER);    // Get one customer
                 get("/{id}/sms-balance", customerController::getSmsBalance, Role.USER);  // Get SMS balance
                 get("/{customerId}/subscription", subscriptionController::getCustomerSubscription, Role.USER);  // Get customer's subscription
+                get("/{customerId}/receipts", receiptController::getCustomerReceipts, Role.USER);  // Get customer's receipts
                 put("/{id}", customerController::update, Role.USER);  // Update customer
                 delete("/{id}", customerController::delete, Role.ADMIN); // Delete customer
             });
@@ -54,6 +56,11 @@ public class Routes {
                 post("/", paymentController::create, Role.USER);  // Process payment
                 get("/{id}", paymentController::read, Role.USER);  // Get payment by ID
                 get("/{paymentId}/receipt", paymentController::getReceipt, Role.USER);  // Get receipt
+            });
+            
+            path("/receipts", () -> {
+                get("/{id}", receiptController::read, Role.USER);  // Get receipt by ID
+                get("/number/{receiptNumber}", receiptController::getByReceiptNumber, Role.USER);  // Get receipt by number
             });
         };
     }

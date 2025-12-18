@@ -185,4 +185,22 @@ public class ReceiptDAO implements IDAO<Receipt> {
             return Optional.empty();
         }
     }
+
+    /**
+     * Get all receipts for a customer by customer ID
+     * @param customerId Customer ID
+     * @return Set of receipts for the customer
+     */
+    public Set<Receipt> getByCustomerId(Long customerId) {
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.createQuery(
+                    "SELECT r FROM Receipt r WHERE r.payment.customer.id = :customerId ORDER BY r.createdAt DESC",
+                    Receipt.class
+            )
+            .setParameter("customerId", customerId)
+            .getResultList()
+            .stream()
+            .collect(Collectors.toSet());
+        }
+    }
 }
