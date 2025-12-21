@@ -1,33 +1,30 @@
-import '../styles/Home.css'
+import {
+  HomeContainer,
+  HeroSection,
+  Title,
+  Subtitle,
+  Tagline,
+} from './Home.styles';
+import Button from '../components/ui/Button';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../utils/routes';
 
 const Home = () => {
-  return (
-    <div className="home-page">
-      <div className="hero">
-        <h1>Welcome to NotionPay</h1>
-        <p>A modern subscription billing and payment platform</p>
-        <div className="hero-buttons">
-          <button className="btn-primary">Get Started</button>
-          <button className="btn-secondary">Learn More</button>
-        </div>
-      </div>
-      
-      <div className="features">
-        <div className="feature-card">
-          <h3>🔒 Secure Payments</h3>
-          <p>Powered by Stripe for secure payment processing</p>
-        </div>
-        <div className="feature-card">
-          <h3>📊 Subscription Management</h3>
-          <p>Flexible plans and billing periods</p>
-        </div>
-        <div className="feature-card">
-          <h3>💬 SMS Products</h3>
-          <p>Purchase and manage SMS packages</p>
-        </div>
-      </div>
-    </div>
-  )
-}
+  const navigate = useNavigate();
 
-export default Home
+  return (
+    <HomeContainer>
+      <HeroSection>
+        <Tagline>Smart. Fast. Secure.</Tagline>
+        <Title>Global Payments Made Simple</Title>
+        <Subtitle>
+          NotionPay enables seamless international transactions with enterprise-grade 
+          security. Move money across borders effortlessly.
+        </Subtitle>
+        <Button onClick={() => navigate(ROUTES.signup)}>Get Started</Button>
+      </HeroSection>
+    </HomeContainer>
+  );
+};
+
+export default Home;

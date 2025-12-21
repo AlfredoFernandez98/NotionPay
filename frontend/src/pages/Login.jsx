@@ -1,59 +1,64 @@
-import { useState } from 'react'
-import '../styles/Auth.css'
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  LoginContainer,
+  LoginCard,
+  LoginHeader,
+  LoginTitle,
+  LoginSubtitle,
+  LoginForm,
+  ForgotPassword,
+  SignupLink,
+} from './Login.styles';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import { ROUTES } from '../utils/routes';
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    // TODO: Implement login logic with backend API
-    console.log('Login attempt:', formData)
-  }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Login logic will be implemented here
+    console.log('Login attempt:', { email, password });
+  };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <h2>Login to NotionPay</h2>
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          
-          <button type="submit" className="btn-primary">Login</button>
-        </form>
-      </div>
-    </div>
-  )
-}
+    <LoginContainer>
+      <LoginCard>
+        <LoginHeader>
+          <LoginTitle>Welcome Back</LoginTitle>
+          <LoginSubtitle>Sign in to your NotionPay account</LoginSubtitle>
+        </LoginHeader>
 
-export default Login
+        <LoginForm onSubmit={handleSubmit}>
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            id="password"
+            label="Password"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <ForgotPassword href="#">Forgot password?</ForgotPassword>
+          <Button type="submit">Sign In</Button>
+        </LoginForm>
+
+        <SignupLink>
+          Don't have an account? <Link to={ROUTES.signup}>Sign up</Link>
+        </SignupLink>
+      </LoginCard>
+    </LoginContainer>
+  );
+};
+
+export default Login;
