@@ -38,9 +38,6 @@ const Navbar = () => {
         </NavLinks>
 
         <LoginWrapper>
-          <Button variant="secondary" onClick={() => navigate(ROUTES.signup)}>
-            Sign Up
-          </Button>
           <Button variant="outline" onClick={() => navigate(ROUTES.login)}>
             Login
           </Button>
