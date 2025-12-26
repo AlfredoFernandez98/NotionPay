@@ -106,7 +106,7 @@ public class ActivityLogDAO implements IDAO<ActivityLog> {
             
             // Query all activity logs for this customer
             return em.createQuery(
-                    "SELECT a FROM ActivityLog a WHERE a.customer.customerId = :customerId ORDER BY a.timestamp DESC",
+                    "SELECT a FROM ActivityLog a WHERE a.customer.id = :customerId ORDER BY a.timestamp DESC",
                     ActivityLog.class)
                     .setParameter("customerId", customerId)
                     .getResultList()

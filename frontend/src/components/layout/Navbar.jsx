@@ -52,9 +52,20 @@ const Navbar = () => {
             <StyledNavLink to={ROUTES.notionLite}>Notion Lite</StyledNavLink>
           </NavItem>
           {isAuthenticated && (
-            <NavItem>
-              <StyledNavLink to={ROUTES.dashboard}>Dashboard</StyledNavLink>
-            </NavItem>
+            <>
+              <NavItem>
+                <StyledNavLink to={ROUTES.dashboard}>Dashboard</StyledNavLink>
+              </NavItem>
+              <NavItem>
+                <StyledNavLink to={ROUTES.buySMS}>Buy SMS</StyledNavLink>
+              </NavItem>
+              <NavItem>
+                <StyledNavLink to={ROUTES.payments}>Payments</StyledNavLink>
+              </NavItem>
+              <NavItem>
+                <StyledNavLink to={ROUTES.paymentMethods}>Cards</StyledNavLink>
+              </NavItem>
+            </>
           )}
         </NavLinks>
 

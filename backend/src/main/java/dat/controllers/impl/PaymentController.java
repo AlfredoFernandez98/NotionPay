@@ -41,6 +41,7 @@ public class PaymentController implements IController<PaymentDTO> {
     private final ReceiptDAO receiptDAO;
     private final ActivityLogDAO activityLogDAO;
     private final SessionDAO sessionDAO;
+    private final SmsBalanceDAO smsBalanceDAO;
     private final StripePaymentService stripeService;
     private final SubscriptionService subscriptionService;
 
@@ -53,6 +54,7 @@ public class PaymentController implements IController<PaymentDTO> {
         this.receiptDAO = ReceiptDAO.getInstance(emf);
         this.activityLogDAO = ActivityLogDAO.getInstance(emf);
         this.sessionDAO = SessionDAO.getInstance(emf);
+        this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
         this.stripeService = StripePaymentService.getInstance();
         this.subscriptionService = SubscriptionService.getInstance(emf);
     }
@@ -151,7 +153,11 @@ public class PaymentController implements IController<PaymentDTO> {
     /**
      * Process payment (charge card)
      * POST /api/payments
-     * Body: { customerId, paymentMethodId, amount, currency, description, subscriptionId?, productId? }
+     * Body: { customerId, paymentMethodId (Long or String), amount, currency, description, subscriptionId?, productId? }
+     * 
+     * Supports two modes:
+     * 1. paymentMethodId as Long: Uses saved payment method from database
+     * 2. paymentMethodId as String (starts with "pm_"): Uses Stripe payment method ID directly (Stripe Elements)
      */
     @Override
     public void create(Context ctx) {
@@ -159,20 +165,38 @@ public class PaymentController implements IController<PaymentDTO> {
                 // Parse request
                 ObjectNode request = ctx.bodyAsClass(ObjectNode.class);
                 Long customerId = request.get("customerId").asLong();
-                Long paymentMethodId = request.get("paymentMethodId").asLong();
+                String paymentMethodIdStr = request.get("paymentMethodId").asText();
                 Integer amountCents = request.get("amount").asInt();
                 String currencyStr = request.get("currency").asText();
                 String description = request.has("description") ? request.get("description").asText() : null;
                 Long subscriptionId = request.has("subscriptionId") ? request.get("subscriptionId").asLong() : null;
                 Long productId = request.has("productId") ? request.get("productId").asLong() : null;
 
-                // Get entities
+                logger.info("Processing payment for customer: {}, amount: {} {}", customerId, amountCents, currencyStr);
+
+                // Get customer
                 Customer customer = customerDAO.getById(customerId)
                         .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-                
-                dat.entities.PaymentMethod paymentMethod = paymentMethodDAO.getById(paymentMethodId)
-                        .orElseThrow(() -> new IllegalArgumentException("Payment method not found"));
 
+                // Determine if this is a Stripe payment method ID (starts with "pm_") or database ID
+                boolean isStripePaymentMethodId = paymentMethodIdStr.startsWith("pm_");
+                String stripePaymentMethodId;
+                dat.entities.PaymentMethod savedPaymentMethod = null;
+
+                if (isStripePaymentMethodId) {
+                    // Direct Stripe payment method ID from Stripe Elements
+                    stripePaymentMethodId = paymentMethodIdStr;
+                    logger.info("Using Stripe payment method ID directly: {}", stripePaymentMethodId);
+                } else {
+                    // Database payment method ID - look it up
+                    Long paymentMethodId = Long.parseLong(paymentMethodIdStr);
+                    savedPaymentMethod = paymentMethodDAO.getById(paymentMethodId)
+                            .orElseThrow(() -> new IllegalArgumentException("Payment method not found"));
+                    stripePaymentMethodId = savedPaymentMethod.getProcessorMethodId();
+                    logger.info("Using saved payment method: {}", paymentMethodId);
+                }
+
+                // Get optional entities
                 Subscription subscription = subscriptionId != null ? 
                         subscriptionDAO.getById(subscriptionId).orElse(null) : null;
                 
@@ -182,13 +206,14 @@ public class PaymentController implements IController<PaymentDTO> {
                 // Create payment in Stripe
                 Map<String, String> metadata = new HashMap<>();
                 metadata.put("customer_id", customerId.toString());
+                metadata.put("one_time_payment", String.valueOf(isStripePaymentMethodId));
                 if (subscriptionId != null) metadata.put("subscription_id", subscriptionId.toString());
                 if (productId != null) metadata.put("product_id", productId.toString());
 
                 PaymentIntent paymentIntent = stripeService.createPaymentIntent(
                         amountCents.longValue(),
                         currencyStr,
-                        paymentMethod.getProcessorMethodId(),
+                        stripePaymentMethodId,
                         description,
                         metadata
                 );
@@ -197,10 +222,10 @@ public class PaymentController implements IController<PaymentDTO> {
                 PaymentStatus status = stripeService.isPaymentSuccessful(paymentIntent) ? 
                         PaymentStatus.COMPLETED : PaymentStatus.PENDING;
 
-                // Save payment to database
+                // Save payment to database (savedPaymentMethod may be null for one-time payments)
                 Payment payment = new Payment(
                         customer,
-                        paymentMethod,
+                        savedPaymentMethod,  // null for one-time Stripe Elements payments
                         subscription,
                         product,
                         status,
@@ -210,12 +235,43 @@ public class PaymentController implements IController<PaymentDTO> {
                 );
                 paymentDAO.create(payment);
 
+                // Get session once for all activity logging
+                Session session = getSessionFromContext(ctx);
+
                 // Generate receipt if payment successful
                 Receipt receipt = null;
                 if (status == PaymentStatus.COMPLETED) {
                     receipt = generateReceipt(payment, paymentIntent);
                     receiptDAO.create(receipt);
                     logger.info("Receipt generated: {}", receipt.getReceiptNumber());
+                    
+                    // Update SMS balance if this was an SMS product purchase
+                    if (product != null && product.getSmsCount() != null) {
+                        String externalCustomerId = customer.getExternalCustomerId();
+                        int smsCredits = product.getSmsCount();
+                        smsBalanceDAO.rechargeSmsCredits(externalCustomerId, smsCredits);
+                        logger.info("SMS balance updated: added {} credits to customer {}", 
+                            smsCredits, externalCustomerId);
+                        
+                        // Log SMS purchase activity
+                        if (session != null) {
+                            Map<String, Object> smsMetadata = new HashMap<>();
+                            smsMetadata.put("productId", product.getId());
+                            smsMetadata.put("productName", product.getName());
+                            smsMetadata.put("smsCreditsAdded", smsCredits);
+                            smsMetadata.put("paymentId", payment.getId());
+                            smsMetadata.put("oneTimePayment", isStripePaymentMethodId);
+                            
+                            ActivityLog smsLog = new ActivityLog(
+                                customer,
+                                session,
+                                ActivityLogType.SMS_PURCHASE,
+                                ActivityLogStatus.SUCCESS,
+                                smsMetadata
+                            );
+                            activityLogDAO.create(smsLog);
+                        }
+                    }
                 }
 
                 // Update subscription after successful payment
@@ -226,13 +282,13 @@ public class PaymentController implements IController<PaymentDTO> {
                 }
 
                 // Log payment activity
-                Session session = getSessionFromContext(ctx);
                 if (session != null) {
                     Map<String, Object> paymentMetadata = new HashMap<>();
                     paymentMetadata.put("paymentId", payment.getId());
                     paymentMetadata.put("amount", amountCents);
                     paymentMetadata.put("currency", currencyStr);
                     paymentMetadata.put("status", status.toString());
+                    paymentMetadata.put("oneTimePayment", isStripePaymentMethodId);
                     if (subscription != null) {
                         paymentMetadata.put("subscriptionId", subscription.getId());
                     }
@@ -434,7 +490,7 @@ public class PaymentController implements IController<PaymentDTO> {
         PaymentDTO dto = new PaymentDTO();
         dto.id = payment.getId();
         dto.customerId = payment.getCustomer().getId();
-        dto.paymentMethodId = payment.getPaymentMethod().getId();
+        dto.paymentMethodId = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getId() : null;
         dto.subscriptionId = payment.getSubscription() != null ? payment.getSubscription().getId() : null;
         dto.productId = payment.getProduct() != null ? payment.getProduct().getId() : null;
         dto.status = payment.getStatus();

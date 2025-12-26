@@ -19,6 +19,7 @@ public class Routes {
     private static final ProductController productController = new ProductController(emf);
     private static final PaymentController paymentController = new PaymentController(emf);
     private static final ReceiptController receiptController = new ReceiptController(emf);
+    private static final ActivityLogController activityLogController = new ActivityLogController(emf);
 
     public EndpointGroup getRoutes() {
         return () -> {
@@ -30,6 +31,7 @@ public class Routes {
                 get("/{customerId}/subscription", subscriptionController::getCustomerSubscription, Role.USER);  // Get customer's subscription
                 get("/{customerId}/receipts", receiptController::getCustomerReceipts, Role.USER);  // Get customer's receipts
                 get("/{customerId}/payment-methods", paymentController::getCustomerPaymentMethods, Role.USER);  // Get customer's payment methods
+                get("/{customerId}/activities", activityLogController::getCustomerActivities, Role.USER);  // Get customer's activities
                 put("/{id}", customerController::update, Role.USER);  // Update customer
                 delete("/{id}", customerController::delete, Role.ADMIN); // Delete customer
             });
@@ -54,7 +56,7 @@ public class Routes {
             });
             
             path("/payments", () -> {
-                post("/", paymentController::create, Role.USER);  // Process payment
+                post("/", paymentController::create, Role.USER);  // Process payment (supports both saved cards and Stripe Elements)
                 get("/{id}", paymentController::read, Role.USER);  // Get payment by ID
                 get("/{paymentId}/receipt", paymentController::getReceipt, Role.USER);  // Get receipt
             });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import apiFacade from '../util/apiFacade';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../utils/routes';
@@ -41,6 +41,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [customerData, setCustomerData] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [allPlans, setAllPlans] = useState([]);
   const [smsBalance, setSmsBalance] = useState(null);
   const [payments, setPayments] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -61,6 +62,14 @@ const Dashboard = () => {
       try {
         setLoading(true);
         const customerId = apiFacade.getCustomerId();
+        
+        // Fetch all available plans
+        try {
+          const plans = await apiFacade.getAllPlans();
+          setAllPlans(plans || []);
+        } catch (err) {
+          console.log('Error fetching plans:', err);
+        }
         
         if (customerId) {
           // Fetch customer profile
@@ -110,20 +119,19 @@ const Dashboard = () => {
             console.log('No receipts available:', err);
           }
 
-          // Create mock activity data
-          const mockActivities = [
-            { type: 'LOGIN', createdAt: new Date().toISOString(), status: 'SUCCESS' }
-          ];
-          
-          if (subscription) {
-            mockActivities.push({
-              type: 'SUBSCRIPTION_CREATED',
-              createdAt: subscription.startDate || new Date().toISOString(),
-              status: 'SUCCESS'
-            });
+          // Fetch real activity data
+          try {
+            console.log('Fetching activities for customer:', customerId);
+            const activityData = await apiFacade.getCustomerActivities(customerId);
+            console.log('✅ Activities loaded:', activityData);
+            console.log('Number of activities:', activityData?.length || 0);
+            setActivities(activityData || []);
+          } catch (err) {
+            console.error('❌ Error fetching activities:', err);
+            console.error('Error details:', err.message);
+            // Fallback to empty array if fetch fails
+            setActivities([]);
           }
-          
-          setActivities(mockActivities);
         }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -148,6 +156,20 @@ const Dashboard = () => {
   const formatCurrency = (amount) => {
     if (!amount) return '0 kr';
     return `${amount.toFixed(2)} kr`;
+  };
+
+  const formatPlanPrice = (priceCents, currency) => {
+    if (!priceCents) return '0';
+    return `${(priceCents / 100).toFixed(0)} ${currency || 'DKK'}`;
+  };
+
+  const isCurrentPlan = (planId) => {
+    return subscription?.planId === planId;
+  };
+
+  const getCurrentPlanDetails = () => {
+    if (!subscription?.planId) return null;
+    return allPlans.find(plan => plan.id === subscription.planId);
   };
 
   const formatActivityType = (type) => {
@@ -193,7 +215,6 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              <CardIcon>👤</CardIcon>
               Profile
             </CardTitle>
           </CardHeader>
@@ -227,49 +248,181 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              <CardIcon>📋</CardIcon>
               Abonnement
             </CardTitle>
           </CardHeader>
           <CardContent>
             {subscription ? (
+              allPlans.length > 0 ? (
               <>
                 <DropdownButton onClick={() => setShowSubscriptionDetails(!showSubscriptionDetails)}>
-                  <span>{subscription.plan?.name || 'No Plan'}</span>
-                  <span>{showSubscriptionDetails ? '▲' : '▼'}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
+                    <span style={{ fontWeight: '700', fontSize: '1.125rem', color: '#6BB8E8' }}>
+                      {subscription.planName || 'No Plan'}
+                    </span>
+                    {getCurrentPlanDetails() && (
+                      <span style={{ fontSize: '0.875rem', color: '#718096', marginTop: '4px' }}>
+                        {formatPlanPrice(getCurrentPlanDetails().priceCents, getCurrentPlanDetails().currency)}/{getCurrentPlanDetails().period?.toLowerCase() || 'month'}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '1.25rem' }}>{showSubscriptionDetails ? '▲' : '▼'}</span>
                 </DropdownButton>
                 
                 {showSubscriptionDetails && (
                   <DropdownContent>
-                    <DropdownItem>
-                      <InfoRow>
-                        <InfoLabel>Status</InfoLabel>
+                    {/* Current Subscription Info */}
+                    <div style={{ 
+                      padding: '1rem', 
+                      background: '#f0f9ff', 
+                      borderRadius: '8px',
+                      marginBottom: '1rem',
+                      border: '2px solid #6BB8E8'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '0.75rem'
+                      }}>
+                        <span style={{ fontWeight: '600', color: '#2d3748' }}>Your Current Plan</span>
                         <StatusBadge status={subscription.status}>
                           {subscription.status}
                         </StatusBadge>
-                      </InfoRow>
-                    </DropdownItem>
-                    <DropdownItem>
-                      <InfoRow>
+                      </div>
+                      <InfoRow style={{ marginBottom: '0.5rem' }}>
                         <InfoLabel>Start Date</InfoLabel>
                         <InfoValue>{formatDate(subscription.startDate)}</InfoValue>
                       </InfoRow>
-                    </DropdownItem>
-                    <DropdownItem>
                       <InfoRow>
                         <InfoLabel>Next Billing</InfoLabel>
                         <InfoValue>{formatDate(subscription.nextBillingDate)}</InfoValue>
                       </InfoRow>
-                    </DropdownItem>
-                    <DropdownItem>
-                      <InfoRow>
-                        <InfoLabel>Plan ID</InfoLabel>
-                        <InfoValue>#{subscription.plan?.id}</InfoValue>
-                      </InfoRow>
-                    </DropdownItem>
+                    </div>
+
+                    {/* All Available Plans */}
+                    <div style={{ marginTop: '1rem' }}>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        fontWeight: '600', 
+                        color: '#718096',
+                        marginBottom: '0.75rem',
+                        paddingLeft: '0.5rem'
+                      }}>
+                        Available Plans:
+                      </div>
+                      {allPlans.map((plan) => {
+                        const isActive = isCurrentPlan(plan.id);
+                        return (
+                          <DropdownItem 
+                            key={plan.id}
+                            style={{
+                              background: isActive ? '#f0f9ff' : 'white',
+                              border: isActive ? '2px solid #6BB8E8' : '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              padding: '1rem',
+                              marginBottom: '0.75rem',
+                              position: 'relative',
+                            }}
+                          >
+                            {isActive && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                background: '#6BB8E8',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontSize: '0.7rem',
+                                fontWeight: '600',
+                              }}>
+                                Current
+                              </div>
+                            )}
+                            
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              marginBottom: '0.5rem',
+                              paddingRight: isActive ? '70px' : '0'
+                            }}>
+                              <div>
+                                <div style={{ 
+                                  fontWeight: '700', 
+                                  fontSize: '1rem',
+                                  color: isActive ? '#6BB8E8' : '#2d3748',
+                                  marginBottom: '4px'
+                                }}>
+                                  {plan.name}
+                                </div>
+                                <div style={{ 
+                                  fontSize: '1.25rem', 
+                                  fontWeight: '700',
+                                  color: isActive ? '#6BB8E8' : '#1a202c'
+                                }}>
+                                  {formatPlanPrice(plan.priceCents, plan.currency)}
+                                  <span style={{ 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: '400', 
+                                    color: '#718096' 
+                                  }}>
+                                    /{plan.period?.toLowerCase() || 'month'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <p style={{ 
+                              fontSize: '0.875rem', 
+                              color: '#4a5568',
+                              margin: 0,
+                              lineHeight: '1.4'
+                            }}>
+                              {plan.description || 'No description available'}
+                            </p>
+                          </DropdownItem>
+                        );
+                      })}
+                    </div>
                   </DropdownContent>
                 )}
               </>
+              ) : (
+                // Subscription exists but plans not loaded yet
+                <>
+                  <DropdownButton onClick={() => setShowSubscriptionDetails(!showSubscriptionDetails)}>
+                    <span>{subscription.planName || 'No Plan'}</span>
+                    <span>{showSubscriptionDetails ? '▲' : '▼'}</span>
+                  </DropdownButton>
+                  
+                  {showSubscriptionDetails && (
+                    <DropdownContent>
+                      <DropdownItem>
+                        <InfoRow>
+                          <InfoLabel>Status</InfoLabel>
+                          <StatusBadge status={subscription.status}>
+                            {subscription.status}
+                          </StatusBadge>
+                        </InfoRow>
+                      </DropdownItem>
+                      <DropdownItem>
+                        <InfoRow>
+                          <InfoLabel>Start Date</InfoLabel>
+                          <InfoValue>{formatDate(subscription.startDate)}</InfoValue>
+                        </InfoRow>
+                      </DropdownItem>
+                      <DropdownItem>
+                        <InfoRow>
+                          <InfoLabel>Next Billing</InfoLabel>
+                          <InfoValue>{formatDate(subscription.nextBillingDate)}</InfoValue>
+                        </InfoRow>
+                      </DropdownItem>
+                    </DropdownContent>
+                  )}
+                </>
+              )
             ) : (
               <EmptyState>No active subscription</EmptyState>
             )}
@@ -280,7 +433,6 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              <CardIcon>💬</CardIcon>
               SMS Balance
             </CardTitle>
           </CardHeader>
@@ -301,6 +453,11 @@ const Dashboard = () => {
                   <InfoLabel>Last Recharged</InfoLabel>
                   <InfoValue>{formatDate(smsBalance.lastRechargedAt)}</InfoValue>
                 </InfoRow>
+                <Link to={ROUTES.buySMS}>
+                  <ViewButton style={{ width: '100%', marginTop: '1rem', textAlign: 'center', textDecoration: 'none' }}>
+                    Buy More SMS
+                  </ViewButton>
+                </Link>
               </>
             ) : (
               <EmptyState>No SMS balance data</EmptyState>
@@ -312,42 +469,55 @@ const Dashboard = () => {
         <LargeCard>
           <CardHeader>
             <CardTitle>
-              <CardIcon>💳</CardIcon>
               Betalingsmetoder
             </CardTitle>
           </CardHeader>
           <CardContent>
             {paymentMethods && paymentMethods.length > 0 ? (
-              paymentMethods.map((method, index) => (
-                <PaymentItem key={index}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {method.brand && (
-                        <span style={{ textTransform: 'capitalize' }}>{method.brand}</span>
-                      )}
-                      <span>•••• {method.last4}</span>
-                      {method.isDefault && (
-                        <StatusBadge status="ACTIVE" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                          Default
-                        </StatusBadge>
-                      )}
+              <>
+                {paymentMethods.map((method, index) => (
+                  <PaymentItem key={index}>
+                    <div>
+                      <div style={{ fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {method.brand && (
+                          <span style={{ textTransform: 'capitalize' }}>{method.brand}</span>
+                        )}
+                        <span>•••• {method.last4}</span>
+                        {method.isDefault && (
+                          <StatusBadge status="ACTIVE" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
+                            Default
+                          </StatusBadge>
+                        )}
+                      </div>
+                      <PaymentDate>
+                        Expires {method.expMonth}/{method.expYear}
+                      </PaymentDate>
                     </div>
-                    <PaymentDate>
-                      Expires {method.expMonth}/{method.expYear}
-                    </PaymentDate>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <StatusBadge status={method.status}>
-                      {method.status}
-                    </StatusBadge>
-                    <span style={{ fontSize: '0.75rem', color: '#718096', textTransform: 'capitalize' }}>
-                      {method.type}
-                    </span>
-                  </div>
-                </PaymentItem>
-              ))
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <StatusBadge status={method.status}>
+                        {method.status}
+                      </StatusBadge>
+                      <span style={{ fontSize: '0.75rem', color: '#718096', textTransform: 'capitalize' }}>
+                        {method.type}
+                      </span>
+                    </div>
+                  </PaymentItem>
+                ))}
+                <Link to={ROUTES.paymentMethods}>
+                  <ViewButton style={{ width: '100%', marginTop: '1rem', textAlign: 'center', textDecoration: 'none' }}>
+                    Manage Payment Methods
+                  </ViewButton>
+                </Link>
+              </>
             ) : (
-              <EmptyState>No payment methods saved</EmptyState>
+              <>
+                <EmptyState>No payment methods saved</EmptyState>
+                <Link to={ROUTES.paymentMethods}>
+                  <ViewButton style={{ width: '100%', marginTop: '1rem', textAlign: 'center', textDecoration: 'none' }}>
+                    Add Payment Method
+                  </ViewButton>
+                </Link>
+              </>
             )}
           </CardContent>
         </LargeCard>
@@ -356,17 +526,16 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              <CardIcon>📊</CardIcon>
               Aktiviteter
             </CardTitle>
           </CardHeader>
           <CardContent>
             {activities && activities.length > 0 ? (
               activities.slice(0, 5).map((activity, index) => (
-                <ActivityItem key={index}>
+                <ActivityItem key={activity.id || index}>
                   <ActivityType>{formatActivityType(activity.type)}</ActivityType>
                   <ActivityDate>
-                    {formatDate(activity.createdAt)}
+                    {formatDate(activity.timestamp || activity.createdAt)}
                     {activity.status && ` • ${activity.status}`}
                   </ActivityDate>
                 </ActivityItem>
@@ -381,7 +550,6 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>
-              <CardIcon>🧾</CardIcon>
               Kvitteringer
             </CardTitle>
           </CardHeader>

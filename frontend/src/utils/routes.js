@@ -6,4 +6,7 @@ export const ROUTES = {
   login: "/login",
   signup: "/signup",
   dashboard: "/dashboard",
+  paymentMethods: "/payment-methods",
+  buySMS: "/buy-sms",
+  payments: "/payments",
 };

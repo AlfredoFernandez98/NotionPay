@@ -2,7 +2,6 @@ import {
   NotionLiteContainer,
   HeroSection,
   HeroImage,
-  HeroContent,
   HeroTitle,
   HeroSubtitle,
   ContentSection,
@@ -23,7 +22,7 @@ import {
 import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../utils/routes';
-import hanwellImage from '../assets/hanwell-monitoring.png';
+import ellabImage from '../assets/Ellab.jpg';
 import welcomeImage from '../assets/notion-lite-welcome.png';
 
 const NotionLite = () => {
@@ -32,45 +31,42 @@ const NotionLite = () => {
   return (
     <NotionLiteContainer>
       <HeroSection>
-        <HeroImage src={hanwellImage} alt="Continuous Environmental Monitoring" />
-        <HeroContent>
+        <HeroImage src={ellabImage} alt="Ellab Environmental Monitoring" />
+      </HeroSection>
+
+      <ContentSection>
           <HeroTitle>Notion Lite</HeroTitle>
           <HeroSubtitle>
             Your answer to straightforward temperature monitoring
           </HeroSubtitle>
-        </HeroContent>
-      </HeroSection>
+      </ContentSection>
 
       <ContentSection>
-        <SectionTitle>Continuous Environmental Monitoring Solutions</SectionTitle>
+        <SectionTitle>Professional Environmental Monitoring</SectionTitle>
         <SectionText>
-          Keep your sensitive products and materials safe from unexpected changes in environmental
-          conditions with a reliable monitoring system. Notion Lite provides enterprise-grade
-          monitoring in a simple, easy-to-use package.
+          Keep your sensitive products and materials safe with reliable monitoring. 
+          Notion Lite provides enterprise-grade monitoring in a simple package.
         </SectionText>
 
         <FeatureGrid>
           <FeatureCard>
-            <FeatureTitle>Dedicated Alarms</FeatureTitle>
+            <FeatureTitle>Instant Alerts</FeatureTitle>
             <FeatureDescription>
-              Receive instant notifications when environmental conditions exceed your specified
-              thresholds, ensuring rapid response to potential issues.
+              Receive immediate notifications when conditions exceed your thresholds.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureTitle>FDA Compliance</FeatureTitle>
+            <FeatureTitle>FDA Compliant</FeatureTitle>
             <FeatureDescription>
-              Complete data integrity and FDA 21 CFR Part 11 compliance built-in, meeting the
-              strictest regulatory requirements.
+              Complete data integrity and FDA 21 CFR Part 11 compliance built-in.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureTitle>Wide Range of Parameters</FeatureTitle>
+            <FeatureTitle>Multiple Parameters</FeatureTitle>
             <FeatureDescription>
-              Monitor temperature, CO2, humidity, pressure, and more with high-precision sensors
-              and reliable data logging.
+              Monitor temperature, CO2, humidity, pressure with precision sensors.
             </FeatureDescription>
           </FeatureCard>
         </FeatureGrid>
@@ -79,64 +75,60 @@ const NotionLite = () => {
       <WelcomeSection>
         <WelcomeImage src={welcomeImage} alt="Welcome to Notion Lite" />
         <WelcomeContent>
-          <WelcomeTitle>Simple, Reliable, Professional</WelcomeTitle>
+          <WelcomeTitle>Simple. Reliable. Professional.</WelcomeTitle>
           <WelcomeText>
-            Notion Lite combines professional-grade monitoring capabilities with an intuitive
-            interface that anyone can use. No complex setup, no extensive training required - just
-            reliable monitoring that works when you need it.
+            Professional monitoring with an intuitive interface. No complex setup or 
+            extensive training required.
           </WelcomeText>
           <WelcomeText>
-            Perfect for laboratories, pharmacies, hospitals, food storage facilities, and any
-            environment where precise environmental monitoring is critical.
+            Perfect for laboratories, pharmacies, hospitals, and food storage facilities.
           </WelcomeText>
         </WelcomeContent>
       </WelcomeSection>
 
       <ContentSection>
-        <SectionTitle>Why Choose Notion Lite?</SectionTitle>
+        <SectionTitle>Key Benefits</SectionTitle>
         
         <FeatureGrid>
           <FeatureCard>
-            <FeatureTitle>Quick Deployment</FeatureTitle>
+            <FeatureTitle>Quick Setup</FeatureTitle>
             <FeatureDescription>
-              Get up and running in minutes with our plug-and-play sensors and cloud-based platform.
+              Plug-and-play sensors with cloud-based platform.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureTitle>Secure Data Storage</FeatureTitle>
+            <FeatureTitle>Secure Storage</FeatureTitle>
             <FeatureDescription>
-              Your monitoring data is encrypted and securely stored in the cloud with automatic backups.
+              Encrypted data with automatic backups.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureTitle>Access Anywhere</FeatureTitle>
+            <FeatureTitle>Remote Access</FeatureTitle>
             <FeatureDescription>
-              View real-time data and historical trends from any device, anywhere in the world.
+              Monitor from any device, anywhere.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
             <FeatureTitle>Cost-Effective</FeatureTitle>
             <FeatureDescription>
-              Professional monitoring without the enterprise price tag - perfect for small to
-              medium-sized facilities.
+              Professional monitoring at an affordable price.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
             <FeatureTitle>Automated Reports</FeatureTitle>
             <FeatureDescription>
-              Generate compliance reports automatically, saving time and ensuring audit readiness.
+              Compliance reports generated automatically.
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
             <FeatureTitle>24/7 Support</FeatureTitle>
             <FeatureDescription>
-              Our expert team is always available to help you with setup, troubleshooting, and
-              optimization.
+              Expert assistance whenever you need it.
             </FeatureDescription>
           </FeatureCard>
         </FeatureGrid>

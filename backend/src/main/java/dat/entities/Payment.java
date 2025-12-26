@@ -23,8 +23,8 @@ public class Payment {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "payment_method_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "payment_method_id", nullable = true)
     private PaymentMethod paymentMethod;
 
     @ManyToOne(optional = true)

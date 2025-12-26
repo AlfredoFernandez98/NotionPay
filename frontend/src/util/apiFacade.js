@@ -370,6 +370,7 @@ function apiFacade() {
   };
 
   const addPaymentMethod = (data) => {
+    console.log("💳 Adding payment method:", data);
     return fetchData("/payment-methods", "POST", data);
   };
 
@@ -427,6 +428,13 @@ function apiFacade() {
 
   const getReceiptByNumber = (receiptNumber) => {
     return fetchData(`/receipts/number/${receiptNumber}`, "GET");
+  };
+
+  /**
+   * ACTIVITY LOG API CALLS
+   */
+  const getCustomerActivities = (customerId) => {
+    return fetchData(`/customers/${customerId}/activities`, "GET");
   };
 
   return {
@@ -491,6 +499,9 @@ function apiFacade() {
     getCustomerReceipts,
     getReceiptById,
     getReceiptByNumber,
+    
+    // Activity Log API
+    getCustomerActivities,
   };
 }
 

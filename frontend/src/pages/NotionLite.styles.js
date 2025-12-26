@@ -5,46 +5,18 @@ export const NotionLiteContainer = styled.div`
 `;
 
 export const HeroSection = styled.section`
-  position: relative;
   width: 100%;
-  min-height: 400px;
-  margin-bottom: 48px;
-
-  @media (max-width: 768px) {
-    min-height: 300px;
-  }
+  max-width: 900px;
+  margin: 0 auto 32px auto;
+  padding: 0 20px;
 `;
 
 export const HeroImage = styled.img`
   width: 100%;
-  height: 400px;
-  object-fit: cover;
+  height: auto;
+  display: block;
   border-radius: 8px;
-
-  @media (max-width: 768px) {
-    height: 300px;
-  }
-`;
-
-export const HeroContent = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 40px 60px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-
-  @media (max-width: 768px) {
-    padding: 30px 40px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 20px 30px;
-    width: 90%;
-  }
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 `;
 
 export const HeroTitle = styled.h1`
@@ -53,6 +25,7 @@ export const HeroTitle = styled.h1`
   font-weight: 600;
   color: #1a202c;
   margin: 0 0 16px 0;
+  text-align: center;
 
   @media (max-width: 768px) {
     font-size: 2.5rem;
@@ -66,7 +39,8 @@ export const HeroTitle = styled.h1`
 export const HeroSubtitle = styled.p`
   font-size: 1.25rem;
   color: #4a5568;
-  margin: 0;
+  margin: 0 0 48px 0;
+  text-align: center;
 
   @media (max-width: 768px) {
     font-size: 1.125rem;

@@ -64,17 +64,13 @@ const Support = () => {
           <InfoSection>
             <InfoTitle>About Jon</InfoTitle>
             <InfoText>
-              Jon has been with NotionPay since 2020 and brings over 8 years of experience in
-              fintech support. He specializes in payment integrations, API troubleshooting, and
-              helping businesses optimize their payment workflows. Jon is passionate about
-              providing clear, actionable solutions and ensuring every customer feels supported
-              throughout their journey with NotionPay.
+              Jon has been with NotionPay since 2020, bringing 8+ years of fintech support experience. 
+              He specializes in payment integrations, API troubleshooting, and helping businesses 
+              optimize their payment workflows.
             </InfoText>
             <InfoText>
-              With a background in computer science and extensive training in international
-              payment regulations, Jon can assist with technical implementations, compliance
-              questions, and general platform inquiries. He speaks English, Danish, and German
-              fluently.
+              With expertise in technical implementations and compliance questions, Jon provides 
+              clear, actionable solutions. Languages: English, Danish, and German.
             </InfoText>
           </InfoSection>
         </SupportSection>
@@ -85,47 +81,40 @@ const Support = () => {
             <FAQItem>
               <FAQQuestion>Technical Integration</FAQQuestion>
               <FAQAnswer>
-                Need help integrating our API? Jon can guide you through the process, provide
-                code examples, and troubleshoot any issues you encounter.
+                API integration guidance, code examples, and troubleshooting support.
               </FAQAnswer>
             </FAQItem>
             <FAQItem>
               <FAQQuestion>Account Management</FAQQuestion>
               <FAQAnswer>
-                Questions about your account, billing, or subscription? We'll help you manage
-                your NotionPay account effectively.
+                Assistance with account setup, billing, and subscription management.
               </FAQAnswer>
             </FAQItem>
             <FAQItem>
               <FAQQuestion>Payment Issues</FAQQuestion>
               <FAQAnswer>
-                Experiencing issues with transactions? We'll investigate and resolve any
-                payment-related problems quickly.
+                Quick investigation and resolution of transaction-related problems.
               </FAQAnswer>
             </FAQItem>
             <FAQItem>
               <FAQQuestion>Compliance & Security</FAQQuestion>
               <FAQAnswer>
-                Need information about our security measures or regulatory compliance? We'll
-                provide detailed documentation and guidance.
+                Documentation and guidance on security measures and regulatory compliance.
               </FAQAnswer>
             </FAQItem>
           </FAQSection>
         </SupportSection>
 
         <SupportSection>
-          <InfoTitle>Other Ways to Reach Us</InfoTitle>
+          <InfoTitle>Additional Support Channels</InfoTitle>
           <InfoText>
-            <strong>Live Chat:</strong> Available on our platform during business hours for
-            immediate assistance.
+            <strong>Live Chat:</strong> Available during business hours for immediate assistance.
           </InfoText>
           <InfoText>
-            <strong>Help Center:</strong> Visit our comprehensive documentation at
-            docs.notionpay.com for guides, tutorials, and FAQs.
+            <strong>Help Center:</strong> docs.notionpay.com for guides and tutorials.
           </InfoText>
           <InfoText>
-            <strong>Emergency Support:</strong> For critical issues outside business hours,
-            email support@notionpay.com with "URGENT" in the subject line.
+            <strong>Emergency:</strong> Email support@notionpay.com with "URGENT" in subject.
           </InfoText>
         </SupportSection>
       </SupportContent>
