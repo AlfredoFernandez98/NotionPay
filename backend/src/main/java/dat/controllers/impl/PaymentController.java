@@ -468,6 +468,53 @@ public class PaymentController implements IController<PaymentDTO> {
         ctx.status(501).json("{\"msg\": \"Use customer-specific endpoint: GET /api/customers/{id}/payments\"}");
     }
 
+    /**
+     * GET /api/customers/{customerId}/payment-methods
+     * Get all payment methods for a customer
+     */
+    public void getCustomerPaymentMethods(Context ctx) {
+        try {
+            Long customerId = Long.parseLong(ctx.pathParam("customerId"));
+            
+            // Get customer
+            Customer customer = customerDAO.getById(customerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+            
+            // Get payment methods
+            Set<dat.entities.PaymentMethod> paymentMethods = paymentMethodDAO.getByCustomer(customer);
+            
+            // Convert to DTOs
+            List<dat.dtos.PaymentMethodDTO> dtos = paymentMethods.stream()
+                    .map(pm -> {
+                        dat.dtos.PaymentMethodDTO dto = new dat.dtos.PaymentMethodDTO();
+                        dto.id = pm.getId();
+                        dto.customerId = pm.getCustomer().getId();
+                        dto.type = pm.getType();
+                        dto.brand = pm.getBrand();
+                        dto.last4 = pm.getLast4();
+                        dto.expMonth = pm.getExpMonth();
+                        dto.expYear = pm.getExpYear();
+                        dto.processorMethodId = pm.getProcessorMethodId();
+                        dto.isDefault = pm.getIsDefault();
+                        dto.status = pm.getStatus();
+                        return dto;
+                    })
+                    .sorted((a, b) -> Boolean.compare(b.isDefault, a.isDefault)) // Default first
+                    .collect(Collectors.toList());
+            
+            ctx.status(200).json(dtos);
+            logger.info("Retrieved {} payment methods for customer ID: {}", dtos.size(), customerId);
+            
+        } catch (NumberFormatException e) {
+            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+        } catch (IllegalArgumentException e) {
+            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+        } catch (Exception e) {
+            logger.error("Error retrieving payment methods", e);
+            ctx.status(500).json("{\"msg\": \"Error retrieving payment methods: " + e.getMessage() + "\"}");
+        }
+    }
+
     @Override
     public void update(Context ctx) {
         ctx.status(501).json("{\"msg\": \"Payments cannot be updated once created\"}");

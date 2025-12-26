@@ -1,6 +1,6 @@
 package dat.security.dtos;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.util.Set;
@@ -20,12 +20,13 @@ public class UserDTO {
     private String email;
     
     /**
-     * Password field - excluded from toString() for security
+     * Password field - WRITE_ONLY for security
+     * Can be received in requests but never sent in responses
      * WARNING: Never log this field or include it in API responses
      */
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @JsonIgnore  // Prevents password from being serialized in JSON responses
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)  // Allows reading from JSON but never writing to JSON
     private String password;
     
     private Set<String> roles;

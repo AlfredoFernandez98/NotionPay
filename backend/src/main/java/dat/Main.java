@@ -13,6 +13,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("Initializing database migration...");
         SerialLinkMigration.populateSerialLinksAndPlans();
+
         System.out.println("Migration completed.\n");
 
         System.out.println("Starting Javalin server on port 7070...");

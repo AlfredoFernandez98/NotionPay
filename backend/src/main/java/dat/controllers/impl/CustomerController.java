@@ -40,8 +40,38 @@ public class CustomerController implements IController<CustomerDTO>{
     }
     @Override
     public void read(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
-
+        try {
+            Long customerId = Long.parseLong(ctx.pathParam("id"));
+            
+            Optional<Customer> customerOpt = customerDAO.getById(customerId);
+            
+            if (customerOpt.isEmpty()) {
+                ctx.status(404);
+                ctx.json("{\"msg\": \"Customer not found\"}");
+                return;
+            }
+            
+            Customer customer = customerOpt.get();
+            
+            // Convert Entity → DTO
+            CustomerDTO dto = new CustomerDTO();
+            dto.id = customer.getId();
+            dto.email = customer.getUser().getEmail();
+            dto.companyName = customer.getCompanyName();
+            dto.serialNumber = customer.getSerialNumber();
+            dto.externalCustomerId = customer.getExternalCustomerId();
+            dto.createdAt = customer.getCreatedAt();
+            
+            ctx.status(200);
+            ctx.json(dto);
+            
+        } catch (NumberFormatException e) {
+            ctx.status(400);
+            ctx.json("{\"msg\": \"Invalid customer ID format\"}");
+        } catch (Exception e) {
+            ctx.status(500);
+            ctx.json("{\"msg\": \"Error fetching customer: " + e.getMessage() + "\"}");
+        }
     }
 
     @Override
@@ -151,26 +181,21 @@ public class CustomerController implements IController<CustomerDTO>{
             ctx.status(201);
             ctx.json(responseDto);
 
-
-            }   catch(Exception e){
-                ctx.status(500);
-                ctx.json("Internal server error: " + e.getMessage());
-            }
-
-
+        } catch (Exception e) {
+            ctx.status(500);
+            ctx.json("Internal server error: " + e.getMessage());
         }
+    }
 
-        @Override
-        public void update (Context ctx){
-            ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+    @Override
+    public void update(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+    }
 
-        }
-
-        @Override
-        public void delete (Context ctx){
-            ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
-
-        }
+    @Override
+    public void delete(Context ctx) {
+        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+    }
 
     /**
      * GET /api/customers/{id}/sms-balance

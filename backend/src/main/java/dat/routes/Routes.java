@@ -29,6 +29,7 @@ public class Routes {
                 get("/{id}/sms-balance", customerController::getSmsBalance, Role.USER);  // Get SMS balance
                 get("/{customerId}/subscription", subscriptionController::getCustomerSubscription, Role.USER);  // Get customer's subscription
                 get("/{customerId}/receipts", receiptController::getCustomerReceipts, Role.USER);  // Get customer's receipts
+                get("/{customerId}/payment-methods", paymentController::getCustomerPaymentMethods, Role.USER);  // Get customer's payment methods
                 put("/{id}", customerController::update, Role.USER);  // Update customer
                 delete("/{id}", customerController::delete, Role.ADMIN); // Delete customer
             });

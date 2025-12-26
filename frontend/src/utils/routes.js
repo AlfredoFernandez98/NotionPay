@@ -5,4 +5,5 @@ export const ROUTES = {
   notionLite: "/notion-lite",
   login: "/login",
   signup: "/signup",
+  dashboard: "/dashboard",
 };

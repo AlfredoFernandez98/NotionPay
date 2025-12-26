@@ -38,9 +38,13 @@ public class SecurityDAO implements ISecurityDAO {
             if (user == null)
                 throw new EntityNotFoundException("No user found with email: " + email); //RuntimeException
             user.getRoles().size(); // force roles to be fetched from db
-            // TODO: TEMP DISABLED FOR TESTING - Remove this comment and uncomment password check
-            // if (!user.verifyPassword(password))
-            //     throw new ValidationException("Wrong password");
+            System.out.println("DEBUG LOGIN: Email: " + email);
+            System.out.println("DEBUG LOGIN: Provided password: " + password);
+            System.out.println("DEBUG LOGIN: Stored password hash length: " + user.getPassword().length());
+            System.out.println("DEBUG LOGIN: Stored password starts with $2a: " + user.getPassword().startsWith("$2a"));
+            System.out.println("DEBUG LOGIN: First 10 chars of hash: " + user.getPassword().substring(0, Math.min(10, user.getPassword().length())));
+            if (!user.verifyPassword(password))
+                throw new ValidationException("Wrong password");
             return new UserDTO(user.getEmail(), user.getRoles().stream().map(r -> r.getRoleName()).collect(Collectors.toSet()));
         }
     }
@@ -52,6 +56,9 @@ public class SecurityDAO implements ISecurityDAO {
             if (userEntity != null)
                 throw new EntityExistsException("User with email: " + email + " already exists");
             userEntity = new User(email, password);
+            System.out.println("DEBUG: Creating user with email: " + email);
+            System.out.println("DEBUG: Password length before persist: " + userEntity.getPassword().length());
+            System.out.println("DEBUG: Password starts with $2a (BCrypt): " + userEntity.getPassword().startsWith("$2a"));
             em.getTransaction().begin();
             Role userRole = em.find(Role.class, "user");
             if (userRole == null)
@@ -60,6 +67,7 @@ public class SecurityDAO implements ISecurityDAO {
             userEntity.addRole(userRole);
             em.persist(userEntity);
             em.getTransaction().commit();
+            System.out.println("DEBUG: User persisted successfully");
             return userEntity;
         }catch (Exception e){
             e.printStackTrace();

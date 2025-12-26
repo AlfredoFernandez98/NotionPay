@@ -23,6 +23,15 @@ public class SerialLinkMigration {
         try {
             em.getTransaction().begin();
             
+            // Check if data already exists (to avoid duplicates on restart)
+            Long planCount = em.createQuery("SELECT COUNT(p) FROM Plan p", Long.class).getSingleResult();
+            
+            if (planCount > 0) {
+                System.out.println("Mock data already exists in database. Skipping migration.");
+                em.getTransaction().commit();
+                return;
+            }
+            
             // Create Plans
             createPlan(em, "Basic Monthly", Period.MONTHLY, 49900, "Basic features");
             createPlan(em, "Professional Monthly", Period.MONTHLY, 99900, "Professional features");

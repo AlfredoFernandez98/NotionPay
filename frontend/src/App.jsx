@@ -6,6 +6,7 @@ import Support from './pages/Support';
 import NotionLite from './pages/NotionLite';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import { ROUTES } from './utils/routes';
 
@@ -20,6 +21,7 @@ const App = () => {
           <Route path={ROUTES.notionLite} element={<NotionLite />} />
           <Route path={ROUTES.login} element={<Login />} />
           <Route path={ROUTES.signup} element={<SignUp />} />
+          <Route path={ROUTES.dashboard} element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

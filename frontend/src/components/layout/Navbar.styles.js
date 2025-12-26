@@ -23,7 +23,7 @@ export const NavbarInner = styled.nav`
   @media (max-width: 768px) {
     padding: 0 16px;
     display: flex;
-    justify-content: space-between;
+  justify-content: space-between;
   }
 `;
 
