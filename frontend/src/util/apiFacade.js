@@ -136,8 +136,10 @@ function apiFacade() {
         setToken(res.token);
         setUserEmail(res.email);
         setSessionId(res.sessionID);
+        setCustomerId(res.customerId);
         
         console.log("✅ Login successful:", res.email);
+        console.log("✅ Customer ID stored:", res.customerId);
         return res;
       })
       .catch((error) => {

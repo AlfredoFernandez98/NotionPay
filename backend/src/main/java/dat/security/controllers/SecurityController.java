@@ -115,7 +115,8 @@ public class SecurityController implements ISecurityController {
                 ctx.status(200).json(returnObject
                         .put("token", token)
                         .put("email", verifiedUser.getEmail())
-                        .put("sessionID", session.getId()));
+                        .put("sessionID", session.getId())
+                        .put("customerId", customer.getId()));
 
             } catch (EntityNotFoundException | ValidationException e) {
                 ctx.status(401);

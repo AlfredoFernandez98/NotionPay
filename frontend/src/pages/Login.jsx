@@ -46,6 +46,7 @@ const Login = () => {
       const user = {
         email: response.email,
         sessionId: response.sessionID,
+        customerId: response.customerId,
       };
       
       setAuth(user, response.token);
