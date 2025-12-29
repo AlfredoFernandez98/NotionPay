@@ -92,7 +92,7 @@ const PaymentMethods = () => {
     try {
       const customerId = apiFacade.getCustomerId();
       
-      console.log('💳 Adding payment method...');
+      console.log('Adding payment method...');
       console.log('Customer ID:', customerId);
       
       if (!customerId) {
@@ -112,7 +112,7 @@ const PaymentMethods = () => {
       
       const response = await apiFacade.addPaymentMethod(paymentMethodData);
       
-      console.log('✅ Payment method added:', response);
+      console.log('Payment method added:', response);
       setSuccess('Payment method added successfully!');
       
       // Reset form
@@ -132,7 +132,7 @@ const PaymentMethods = () => {
       }, 2000);
 
     } catch (err) {
-      console.error('❌ Error adding payment method:', err);
+      console.error('Error adding payment method:', err);
       console.error('Error details:', err);
       
       // Handle different error types
@@ -166,13 +166,8 @@ const PaymentMethods = () => {
   };
 
   const getBrandIcon = (brand) => {
-    const icons = {
-      'visa': '💳',
-      'mastercard': '💳',
-      'amex': '💳',
-      'discover': '💳',
-    };
-    return icons[brand?.toLowerCase()] || '💳';
+    // Return empty string - no icons needed
+    return '';
   };
 
   if (loading) {
@@ -205,7 +200,6 @@ const PaymentMethods = () => {
         <CardContent>
           {paymentMethods.length === 0 ? (
             <EmptyState>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💳</div>
               <p>No payment methods saved yet</p>
               <p style={{ fontSize: '0.875rem', color: '#718096', marginTop: '0.5rem' }}>
                 Add a card to make payments easier
@@ -255,7 +249,7 @@ const PaymentMethods = () => {
                 {success && <SuccessMessage>{success}</SuccessMessage>}
 
                 <p style={{ marginBottom: '1.5rem', color: '#718096', fontSize: '0.875rem' }}>
-                  ⚠️ For testing, use Stripe test card: 4242 4242 4242 4242
+                  For testing, use Stripe test card: 4242 4242 4242 4242
                 </p>
 
                 <FormGroup>

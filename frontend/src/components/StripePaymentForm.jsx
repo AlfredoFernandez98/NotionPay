@@ -69,13 +69,12 @@ const StripePaymentForm = ({ onCardReady, onError }) => {
         </StripeElementContainer>
         {cardError && (
           <InfoBox $variant="warning" role="alert">
-            ⚠️ {cardError}
+            {cardError}
           </InfoBox>
         )}
       </FormGroup>
 
       <InfoBox $variant="info">
-        <span role="img" aria-label="Information">ℹ️</span>
         <div>
           <strong>Secure Payment</strong>
           <br />

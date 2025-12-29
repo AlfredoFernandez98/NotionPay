@@ -228,7 +228,7 @@ const BuySMS = () => {
         response = await apiFacade.processPayment(paymentData);
       }
       
-      setSuccess(`🎉 Successfully purchased ${product.name}! Your SMS balance has been updated.`);
+      setSuccess(`Successfully purchased ${product.name}! Your SMS balance has been updated.`);
       
       // Navigate to dashboard immediately to show updated SMS balance
       setTimeout(() => {
@@ -260,13 +260,8 @@ const BuySMS = () => {
   };
 
   const getBrandIcon = (brand) => {
-    const icons = {
-      'visa': '💳',
-      'mastercard': '💳',
-      'amex': '💳',
-      'discover': '💳',
-    };
-    return icons[brand?.toLowerCase()] || '💳';
+    // Return empty string - no icons needed
+    return '';
   };
 
   if (loading) {
@@ -296,7 +291,7 @@ const BuySMS = () => {
 
       {error && (
         <ErrorMessage role="alert" aria-live="assertive">
-          ⚠️ {error}
+          {error}
         </ErrorMessage>
       )}
       {success && (
@@ -330,7 +325,7 @@ const BuySMS = () => {
                 }}
               >
                 {selectedProduct === product.id && (
-                  <SelectedBadge aria-label="Selected">✓ Selected</SelectedBadge>
+                  <SelectedBadge aria-label="Selected">Selected</SelectedBadge>
                 )}
                 <ProductHeader>
                   <ProductName>{product.name}</ProductName>
@@ -340,10 +335,10 @@ const BuySMS = () => {
                 </ProductHeader>
                 <ProductDescription>{product.description}</ProductDescription>
                 <ProductFeatures>
-                  <FeatureItem>💬 {product.smsCount} SMS Credits</FeatureItem>
-                  <FeatureItem>✓ Never expires</FeatureItem>
+                  <FeatureItem>{product.smsCount} SMS Credits</FeatureItem>
+                  <FeatureItem>Never expires</FeatureItem>
                   <FeatureItem>
-                    📊 {(product.priceCents / product.smsCount / 100).toFixed(3)} {product.currency}/SMS
+                    {(product.priceCents / product.smsCount / 100).toFixed(3)} {product.currency}/SMS
                   </FeatureItem>
                 </ProductFeatures>
                 <SelectButton 
@@ -398,7 +393,6 @@ const BuySMS = () => {
               </div>
             ) : paymentMethods.length === 0 ? (
               <EmptyState role="status">
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden="true">💳</div>
                 <p>No payment methods saved</p>
                 <AddCardLink 
                   onClick={() => navigate(ROUTES.paymentMethods)}

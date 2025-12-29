@@ -123,11 +123,11 @@ const Dashboard = () => {
           try {
             console.log('Fetching activities for customer:', customerId);
             const activityData = await apiFacade.getCustomerActivities(customerId);
-            console.log('✅ Activities loaded:', activityData);
+            console.log('Activities loaded:', activityData);
             console.log('Number of activities:', activityData?.length || 0);
             setActivities(activityData || []);
           } catch (err) {
-            console.error('❌ Error fetching activities:', err);
+            console.error('Error fetching activities:', err);
             console.error('Error details:', err.message);
             // Fallback to empty array if fetch fails
             setActivities([]);

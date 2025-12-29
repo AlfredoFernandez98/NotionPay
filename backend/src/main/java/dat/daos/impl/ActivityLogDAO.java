@@ -14,8 +14,6 @@ import java.util.stream.Collectors;
 
 /**
  * DAO for ActivityLog entity
- * TODO: Implement IDAO interface methods
- * TODO: Add custom methods like getByCustomerId, getByType, getByDateRange
  */
 public class ActivityLogDAO implements IDAO<ActivityLog> {
     private static ActivityLogDAO instance;
@@ -30,7 +28,6 @@ public class ActivityLogDAO implements IDAO<ActivityLog> {
     }
 
     private ActivityLogDAO() {
-        // Private constructor for singleton
     }
 
     @Override
@@ -89,22 +86,13 @@ public class ActivityLogDAO implements IDAO<ActivityLog> {
         return Optional.empty();
     }
 
-    // ========== CUSTOM BUSINESS METHODS ==========
-
-    /**
-     * Get all activity logs for a specific customer
-     * @param customerId The customer ID to filter by
-     * @return Set of ActivityLog entries for this customer
-     */
     public Set<ActivityLog> getByCustomerId(Long customerId) {
         try(EntityManager em = emf.createEntityManager()) {
-            // Verify customer exists
             Customer customer = em.find(Customer.class, customerId);
             if (customer == null) {
                 return Collections.emptySet();
             }
             
-            // Query all activity logs for this customer
             return em.createQuery(
                     "SELECT a FROM ActivityLog a WHERE a.customer.id = :customerId ORDER BY a.timestamp DESC",
                     ActivityLog.class)
@@ -115,11 +103,6 @@ public class ActivityLogDAO implements IDAO<ActivityLog> {
         }
     }
 
-    /**
-     * Get activity logs by type (e.g., LOGIN, LOGOUT, PAYMENT)
-     * @param type The activity log type to filter by
-     * @return Set of ActivityLog entries matching this type
-     */
     public Set<ActivityLog> getByType(String type) {
         try(EntityManager em = emf.createEntityManager()) {
             return em.createQuery(

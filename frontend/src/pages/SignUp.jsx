@@ -18,6 +18,7 @@ import { setAuth } from '../store/authStore';
 const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [error, setError] = useState('');
@@ -27,6 +28,19 @@ const SignUp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please try again.');
+      return;
+    }
+    
+    // Check password length
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -116,9 +130,19 @@ const SignUp = () => {
             id="password"
             label="Password"
             type="password"
-            placeholder="Create a password"
+            placeholder="Create a password (min. 8 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+          />
+          <Input
+            id="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
             disabled={loading}
           />

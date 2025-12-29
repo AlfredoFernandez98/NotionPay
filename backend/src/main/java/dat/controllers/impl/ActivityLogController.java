@@ -4,6 +4,7 @@ import dat.controllers.IController;
 import dat.daos.impl.ActivityLogDAO;
 import dat.dtos.ActivityLogDTO;
 import dat.entities.ActivityLog;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -33,12 +34,11 @@ public class ActivityLogController implements IController<ActivityLogDTO> {
             logger.info("Retrieved activity log ID: {}", id);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid activity log ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid activity log ID format");
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error retrieving activity log", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving activity log: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving activity log", logger, e);
         }
     }
 
@@ -68,10 +68,9 @@ public class ActivityLogController implements IController<ActivityLogDTO> {
             logger.info("Retrieved {} activities for customer ID: {}", dtos.size(), customerId);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving customer activities", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving activities: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving activities", logger, e);
         }
     }
 

@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * Integration test for Payment flow: HTTP → Controller → DAO → Database
  * Tests complete payment processing with REAL Stripe integration
  * 
- * ⚠️ IMPORTANT: These tests make REAL calls to Stripe's test API
+ * IMPORTANT: These tests make REAL calls to Stripe's test API
  * 
  * REQUIREMENTS:
- * 1. Valid Stripe test API keys in config.properties (✅ Already configured)
+ * 1. Valid Stripe test API keys in config.properties (Already configured)
  * 2. Internet connection to api.stripe.com
  * 3. Testcontainers PostgreSQL (test_db) for isolated testing
  * 
@@ -42,8 +42,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Run ONLY customer tests:
  *   mvn test -Dtest=CustomerIntegrationTest
  * 
- * ⚠️ DON'T run 'mvn test' (all tests) - it causes EntityManager conflicts
- * ⚠️ Run each test file individually for best results
+ * DON'T run 'mvn test' (all tests) - it causes EntityManager conflicts
+ * Run each test file individually for best results
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PaymentIntegrationTest {
@@ -117,7 +117,7 @@ class PaymentIntegrationTest {
     @DisplayName("POST /api/payment-methods - Should save card and return 201")
     void testAddPaymentMethod_Success() {
         // Arrange
-        // ⚠️ NOTE: In production, NEVER send raw card numbers to backend!
+        // NOTE: In production, NEVER send raw card numbers to backend!
         // This is ONLY for testing. In production:
         // 1. Frontend uses Stripe.js to tokenize card
         // 2. Frontend sends token to backend (not card number)

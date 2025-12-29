@@ -62,18 +62,9 @@ public class PaymentController implements IController<PaymentDTO> {
     /**
      * Add payment method (save card)
      * POST /api/payment-methods
-     * Body: { customerId, cardNumber, expMonth, expYear, cvc, isDefault }
      * 
-     * ⚠️ SECURITY WARNING - FOR TESTING/DEVELOPMENT ONLY!
-     * This endpoint accepts raw card numbers for testing purposes.
-     * 
-     * IN PRODUCTION, you MUST:
-     * 1. Remove this endpoint or restrict to internal use only
-     * 2. Use Stripe.js on frontend to tokenize cards
-     * 3. Create endpoint that accepts Stripe tokens instead of card numbers
-     * 4. Never send raw card numbers through your backend
-     * 
-     * See: https://stripe.com/docs/payments/accept-a-payment
+     * SECURITY WARNING - FOR TESTING ONLY!
+     * Production should use Stripe.js to tokenize cards on frontend.
      */
     public void addPaymentMethod(Context ctx) {
         try {

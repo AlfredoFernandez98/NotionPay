@@ -125,7 +125,7 @@ function apiFacade() {
       password: password,
     });
 
-    console.log("🔐 LOGIN REQUEST:");
+    console.log("LOGIN REQUEST:");
     console.log("  URL:", URL + "/auth/login");
     console.log("  Email:", email);
     console.log("  Password length:", password?.length);
@@ -135,12 +135,12 @@ function apiFacade() {
 
     return fetch(URL + "/auth/login", options)
       .then((response) => {
-        console.log("📡 Backend response status:", response.status);
-        console.log("📡 Response OK:", response.ok);
+        console.log("Backend response status:", response.status);
+        console.log("Response OK:", response.ok);
         return handleHttpErrors(response);
       })
       .then((res) => {
-        console.log("✅ Login response data:", res);
+        console.log("Login response data:", res);
         
         // Store authentication data
         setToken(res.token);
@@ -148,14 +148,14 @@ function apiFacade() {
         setSessionId(res.sessionID);
         setCustomerId(res.customerId);
         
-        console.log("✅ Login successful:", res.email);
-        console.log("✅ Customer ID stored:", res.customerId);
+        console.log("Login successful:", res.email);
+        console.log("Customer ID stored:", res.customerId);
         return res;
       })
       .catch((error) => {
-        console.error("❌ Login failed - Full error:", error);
-        console.error("❌ Error status:", error.status);
-        console.error("❌ Error fullError:", error.fullError);
+        console.error("Login failed - Full error:", error);
+        console.error("Error status:", error.status);
+        console.error("Error fullError:", error.fullError);
         throw error;
       });
   };
@@ -174,7 +174,7 @@ function apiFacade() {
       serialNumber: serialNumber,
     });
 
-    console.log("📝 REGISTER REQUEST:");
+    console.log("REGISTER REQUEST:");
     console.log("  URL:", URL + "/auth/register");
     console.log("  Email:", email);
     console.log("  Password length:", password?.length);
@@ -380,7 +380,7 @@ function apiFacade() {
   };
 
   const addPaymentMethod = (data) => {
-    console.log("💳 Adding payment method:", data);
+    console.log("Adding payment method:", data);
     return fetchData("/payment-methods", "POST", data);
   };
 

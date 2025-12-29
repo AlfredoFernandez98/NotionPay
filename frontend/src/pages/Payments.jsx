@@ -176,7 +176,6 @@ const Payments = () => {
         <CardContent>
           {filteredPayments.length === 0 ? (
             <EmptyState>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💳</div>
               <p>No {filter !== 'all' ? filter : ''} payments found</p>
               <Link to={ROUTES.buySMS}>
                 <ViewReceiptButton style={{ marginTop: '1rem' }}>

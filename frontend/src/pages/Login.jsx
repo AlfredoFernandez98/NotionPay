@@ -35,7 +35,7 @@ const Login = () => {
     try {
       // Call the login API
       const response = await apiFacade.login(email, password);
-      console.log('✅ Login response received:', response);
+      console.log('Login response received:', response);
       
       // Only proceed if we have a valid token
       if (!response.token) {
@@ -52,11 +52,11 @@ const Login = () => {
       setAuth(user, response.token);
       
       // Navigate to dashboard after successful login
-      console.log('✅ Login successful! Redirecting to dashboard...');
+      console.log('Login successful! Redirecting to dashboard...');
       navigate('/dashboard');
       
     } catch (err) {
-      console.error('❌ Login error:', err);
+      console.error('Login error:', err);
       
       // Handle error from backend
       if (err.fullError) {
