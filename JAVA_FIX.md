@@ -89,3 +89,5 @@ Only `pom.xml` was updated:
 - ✅ Simplified compiler configuration
 
 Everything else (all your Java code) remains exactly the same!
+
+

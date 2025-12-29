@@ -469,6 +469,11 @@ public class PaymentController implements IController<PaymentDTO> {
             }
         }
         
+        // Handle null payment method (for one-time Stripe Elements payments)
+        String brand = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getBrand() : "Card";
+        String last4 = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getLast4() : "****";
+        Integer expYear = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getExpYear() : null;
+        
         return new Receipt(
                 payment,
                 receiptNumber,
@@ -478,9 +483,9 @@ public class PaymentController implements IController<PaymentDTO> {
                 receiptUrl,
                 payment.getCustomer().getUser().getEmail(),
                 payment.getCustomer().getCompanyName(),
-                payment.getPaymentMethod().getBrand(),
-                payment.getPaymentMethod().getLast4(),
-                payment.getPaymentMethod().getExpYear(),
+                brand,
+                last4,
+                expYear,
                 paymentIntent.getId(),
                 metadata
         );

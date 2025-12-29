@@ -230,13 +230,10 @@ const BuySMS = () => {
       
       setSuccess(`🎉 Successfully purchased ${product.name}! Your SMS balance has been updated.`);
       
-      // Reset selections after successful purchase
+      // Navigate to dashboard immediately to show updated SMS balance
       setTimeout(() => {
-        setSelectedProduct(null);
-        setSelectedPaymentMethod(null);
-        setSuccess('');
         navigate(ROUTES.dashboard);
-      }, 3000);
+      }, 1500);
 
     } catch (err) {
       setError(getErrorMessage(err, 'Payment failed. Please try again or contact support.'));

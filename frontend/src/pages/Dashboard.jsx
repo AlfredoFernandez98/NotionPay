@@ -559,11 +559,35 @@ const Dashboard = () => {
                 <ReceiptItem key={index}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '4px' }}>
-                      Receipt #{receipt.id}
+                      {receipt.receiptNumber || `Receipt #${receipt.id}`}
                     </div>
-                    <PaymentDate>{formatDate(receipt.createdAt)}</PaymentDate>
+                    <PaymentDate>{formatDate(receipt.paidAt || receipt.createdAt)}</PaymentDate>
+                    {receipt.metadata?.productName && (
+                      <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '2px' }}>
+                        {receipt.metadata.productName}
+                      </div>
+                    )}
+                    {receipt.metadata?.planName && (
+                      <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '2px' }}>
+                        {receipt.metadata.planName}
+                      </div>
+                    )}
                   </div>
-                  <ViewButton>View</ViewButton>
+                  <div style={{ textAlign: 'right' }}>
+                    <PaymentAmount style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '4px' }}>
+                      {formatCurrency(receipt.priceCents / 100)}
+                    </PaymentAmount>
+                    {receipt.processorReceiptUrl && (
+                      <a 
+                        href={receipt.processorReceiptUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <ViewButton>View</ViewButton>
+                      </a>
+                    )}
+                  </div>
                 </ReceiptItem>
               ))
             ) : (

@@ -8,12 +8,22 @@ const URL = import.meta.env.VITE_API_URL || "http://localhost:7070/api";
 /**
  * Handle HTTP errors from backend responses
  */
-function handleHttpErrors(res) {
+async function handleHttpErrors(res) {
   if (!res.ok) {
-    return Promise.reject({ 
-      status: res.status, 
-      fullError: res.json() 
-    });
+    try {
+      const errorData = await res.json();
+      return Promise.reject({ 
+        status: res.status, 
+        fullError: errorData,
+        message: errorData.msg || errorData.message || 'An error occurred'
+      });
+    } catch (e) {
+      // If response is not JSON, return status text
+      return Promise.reject({
+        status: res.status,
+        message: res.statusText || 'An error occurred'
+      });
+    }
   }
   return res.json();
 }
