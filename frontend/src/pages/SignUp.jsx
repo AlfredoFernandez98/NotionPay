@@ -13,7 +13,6 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { ROUTES } from '../utils/routes';
 import apiFacade from '../util/apiFacade';
-import { setAuth } from '../store/authStore';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
@@ -47,24 +46,21 @@ const SignUp = () => {
       // Call the register API
       const response = await apiFacade.register(email, password, companyName, serialNumber);
       
-      // Store auth data in the store
-      const user = {
-        email: response.email,
-        customerId: response.customerId,
-        planName: response.planName,
-        subscriptionId: response.subscriptionId,
-        initialSmsCredits: response.initialSmsCredits,
-      };
-      
-      setAuth(user, response.token);
-      
       // Show success message
       console.log('Registration successful!');
       console.log('Plan:', response.planName);
       console.log('Initial SMS credits:', response.initialSmsCredits);
       
-      // Navigate to dashboard after successful registration
-      navigate('/dashboard');
+      // Navigate to login page with success message (do NOT auto-login)
+      navigate(ROUTES.login, { 
+        state: { 
+          registrationSuccess: true,
+          email: response.email,
+          companyName: companyName,
+          planName: response.planName,
+          initialSmsCredits: response.initialSmsCredits
+        } 
+      });
       
     } catch (err) {
       console.error('Registration error:', err);

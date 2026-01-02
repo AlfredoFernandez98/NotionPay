@@ -32,6 +32,12 @@ import {
   SuccessMessage,
   EmptyState,
   AddCardLink,
+  ConfirmationModal,
+  ModalOverlay,
+  ModalTitle,
+  ModalText,
+  ModalActions,
+  ModalButton,
 } from './BuySMS.styles';
 import {
   Card,
@@ -66,6 +72,11 @@ const PaySubscription = () => {
   const [useOneTimePayment, setUseOneTimePayment] = useState(false);
   const [stripeCardReady, setStripeCardReady] = useState(false);
   const [stripeElements, setStripeElements] = useState(null);
+  
+  // Confirmation and Success Modals
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -132,7 +143,8 @@ const PaySubscription = () => {
     }
   };
 
-  const handlePaySubscription = async () => {
+  const handlePaySubscription = () => {
+    // Validate before showing confirmation
     if (!useOneTimePayment && !selectedPaymentMethod) {
       setError('Please select a payment method');
       return;
@@ -143,6 +155,12 @@ const PaySubscription = () => {
       return;
     }
 
+    // Show confirmation modal
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    setShowConfirmation(false);
     setError('');
     setSuccess('');
     setProcessing(true);
@@ -197,12 +215,18 @@ const PaySubscription = () => {
         response = await apiFacade.processPayment(paymentData);
       }
       
-      setSuccess(`Subscription payment successful! Your subscription has been renewed.`);
+      // Store payment details for success modal
+      setPaymentDetails({
+        planName: plan.name,
+        amount: plan.priceCents / 100,
+        currency: plan.currency.toUpperCase(),
+        nextBillingDate: formatDate(new Date(Date.now() + (plan.period === 'MONTHLY' ? 30 : 365) * 24 * 60 * 60 * 1000)),
+        paymentId: response.paymentId,
+        timestamp: new Date().toLocaleString('da-DK')
+      });
       
-      // Navigate to dashboard after 2 seconds
-      setTimeout(() => {
-        navigate(ROUTES.dashboard);
-      }, 2000);
+      setSuccess(`Subscription payment successful! Your subscription has been renewed.`);
+      setShowSuccessModal(true);
       
     } catch (err) {
       console.error('Payment error:', err);
@@ -405,6 +429,106 @@ const PaySubscription = () => {
           `Pay ${(plan.priceCents / 100).toFixed(2)} ${plan.currency}`
         )}
       </PurchaseButton>
+
+      {/* Confirmation Modal */}
+      {showConfirmation && plan && (
+        <>
+          <ModalOverlay 
+            onClick={() => setShowConfirmation(false)}
+            aria-hidden="true"
+          />
+          <ConfirmationModal role="dialog" aria-labelledby="confirm-title" aria-modal="true">
+            <ModalTitle id="confirm-title">Confirm Subscription Payment</ModalTitle>
+            <ModalText>
+              You are about to pay for your <strong>{plan.name}</strong> subscription for{' '}
+              <strong>{(plan.priceCents / 100).toFixed(2)} {plan.currency}</strong>.
+              {!useOneTimePayment && selectedPaymentMethod && (
+                <>
+                  <br /><br />
+                  Payment method: {paymentMethods.find(m => m.id === selectedPaymentMethod)?.brand} ending in {paymentMethods.find(m => m.id === selectedPaymentMethod)?.last4}
+                </>
+              )}
+              <br /><br />
+              This will renew your subscription and update your next billing date.
+            </ModalText>
+            <ModalActions>
+              <ModalButton 
+                onClick={() => setShowConfirmation(false)}
+                aria-label="Cancel payment"
+              >
+                Cancel
+              </ModalButton>
+              <ModalButton 
+                $variant="primary" 
+                onClick={handleConfirmPayment}
+                aria-label="Confirm and complete payment"
+              >
+                Confirm Payment
+              </ModalButton>
+            </ModalActions>
+          </ConfirmationModal>
+        </>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && paymentDetails && (
+        <>
+          <ModalOverlay onClick={() => {}} aria-hidden="true" />
+          <ConfirmationModal role="dialog" aria-labelledby="success-title" aria-modal="true">
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '4rem', 
+                color: '#48BB78',
+                marginBottom: '10px'
+              }}>
+                ✓
+              </div>
+              <ModalTitle id="success-title" style={{ color: '#48BB78' }}>
+                Payment Successful!
+              </ModalTitle>
+            </div>
+            
+            <div style={{ 
+              background: '#F7FAFC', 
+              padding: '20px', 
+              borderRadius: '8px',
+              marginBottom: '20px',
+              textAlign: 'left'
+            }}>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Subscription:</strong> {paymentDetails.planName}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Amount Paid:</strong> {paymentDetails.amount} {paymentDetails.currency}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Next Billing Date:</strong> {paymentDetails.nextBillingDate}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Payment ID:</strong> #{paymentDetails.paymentId}
+              </div>
+              <div>
+                <strong>Date:</strong> {paymentDetails.timestamp}
+              </div>
+            </div>
+            
+            <ModalText style={{ marginBottom: '20px', color: '#48BB78' }}>
+              Your subscription has been renewed successfully!
+            </ModalText>
+            
+            <ModalActions>
+              <ModalButton 
+                $variant="primary" 
+                onClick={() => navigate(ROUTES.dashboard)}
+                aria-label="Return to dashboard"
+                style={{ width: '100%' }}
+              >
+                Return to Dashboard
+              </ModalButton>
+            </ModalActions>
+          </ConfirmationModal>
+        </>
+      )}
     </PageContainer>
   );
 };

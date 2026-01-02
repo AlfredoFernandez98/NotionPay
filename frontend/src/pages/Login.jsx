@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LoginContainer,
   LoginCard,
@@ -20,12 +20,29 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for registration success message
+  useEffect(() => {
+    if (location.state?.registrationSuccess) {
+      const { email: registeredEmail, companyName, planName, initialSmsCredits } = location.state;
+      setEmail(registeredEmail || '');
+      setSuccess(
+        `Account created successfully! Welcome ${companyName}! You have been subscribed to ${planName} with ${initialSmsCredits} SMS credits. Please login to continue.`
+      );
+      
+      // Clear the state so message doesn't show again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     console.log('=== LOGIN ATTEMPT ===');
@@ -90,6 +107,23 @@ const Login = () => {
         </LoginHeader>
 
         <LoginForm onSubmit={handleSubmit}>
+          {success && (
+            <div style={{ 
+              padding: '16px', 
+              marginBottom: '16px', 
+              backgroundColor: '#d4edda', 
+              color: '#155724',
+              border: '1px solid #c3e6cb',
+              borderRadius: '8px',
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
+              <strong>✓ Success!</strong>
+              <br />
+              {success}
+            </div>
+          )}
+          
           {error && (
             <div style={{ 
               padding: '12px', 

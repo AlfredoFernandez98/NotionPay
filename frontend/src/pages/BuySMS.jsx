@@ -74,8 +74,10 @@ const BuySMS = () => {
   const [stripeCardReady, setStripeCardReady] = useState(false);
   const [stripeElements, setStripeElements] = useState(null);
   
-  // Confirmation
+  // Confirmation and Success
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -228,12 +230,18 @@ const BuySMS = () => {
         response = await apiFacade.processPayment(paymentData);
       }
       
-      setSuccess(`Successfully purchased ${product.name}! Your SMS balance has been updated.`);
+      // Store payment details for success modal
+      setPaymentDetails({
+        productName: product.name,
+        smsCount: product.smsCount,
+        amount: product.priceCents / 100,
+        currency: product.currency.toUpperCase(),
+        paymentId: response.paymentId,
+        timestamp: new Date().toLocaleString('da-DK')
+      });
       
-      // Navigate to dashboard immediately to show updated SMS balance
-      setTimeout(() => {
-        navigate(ROUTES.dashboard);
-      }, 1500);
+      setSuccess(`Successfully purchased ${product.name}! Your SMS balance has been updated.`);
+      setShowSuccessModal(true);
 
     } catch (err) {
       setError(getErrorMessage(err, 'Payment failed. Please try again or contact support.'));
@@ -539,6 +547,66 @@ const BuySMS = () => {
                 aria-label="Confirm and complete purchase"
               >
                 Confirm Purchase
+              </ModalButton>
+            </ModalActions>
+          </ConfirmationModal>
+        </>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && paymentDetails && (
+        <>
+          <ModalOverlay onClick={() => {}} aria-hidden="true" />
+          <ConfirmationModal role="dialog" aria-labelledby="success-title" aria-modal="true">
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '4rem', 
+                color: '#48BB78',
+                marginBottom: '10px'
+              }}>
+                ✓
+              </div>
+              <ModalTitle id="success-title" style={{ color: '#48BB78' }}>
+                Payment Successful!
+              </ModalTitle>
+            </div>
+            
+            <div style={{ 
+              background: '#F7FAFC', 
+              padding: '20px', 
+              borderRadius: '8px',
+              marginBottom: '20px',
+              textAlign: 'left'
+            }}>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Product:</strong> {paymentDetails.productName}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>SMS Credits:</strong> {paymentDetails.smsCount}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Amount Paid:</strong> {paymentDetails.amount} {paymentDetails.currency}
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <strong>Payment ID:</strong> #{paymentDetails.paymentId}
+              </div>
+              <div>
+                <strong>Date:</strong> {paymentDetails.timestamp}
+              </div>
+            </div>
+            
+            <ModalText style={{ marginBottom: '20px', color: '#48BB78' }}>
+              Your SMS balance has been updated and is ready to use!
+            </ModalText>
+            
+            <ModalActions>
+              <ModalButton 
+                $variant="primary" 
+                onClick={() => navigate(ROUTES.dashboard)}
+                aria-label="Return to dashboard"
+                style={{ width: '100%' }}
+              >
+                Return to Dashboard
               </ModalButton>
             </ModalActions>
           </ConfirmationModal>
