@@ -65,26 +65,58 @@ const Payments = () => {
         return;
       }
 
-      // Note: You'll need to add this endpoint to the backend
-      // For now, we'll get payments from receipts
+      // Fetch completed payments from receipts
       const receipts = await apiFacade.getCustomerReceipts(customerId);
       
       // Transform receipts to payment format
-      const paymentData = receipts?.map(receipt => ({
+      const completedPayments = receipts?.map(receipt => ({
         id: receipt.id,
-        amount: receipt.amount,
+        amount: receipt.priceCents,
         currency: 'DKK',
         status: receipt.status === 'PAID' ? 'COMPLETED' : receipt.status,
-        description: receipt.paymentMethod ? 
-          `${receipt.paymentMethod} ending in ${receipt.last4}` : 
+        description: receipt.pmBrand ? 
+          `${receipt.pmBrand} ending in ${receipt.pmLast4}` : 
           'Payment',
         createdAt: receipt.createdAt,
         receiptId: receipt.id,
         receiptNumber: receipt.receiptNumber
       })) || [];
+
+      // Fetch subscription to check for pending payments
+      try {
+        const subData = await apiFacade.getCustomerSubscription(customerId);
+        
+        if (subData?.planId) {
+          const planData = await apiFacade.getPlanById(subData.planId);
+          
+          // Check if subscription payment is due
+          if (subData.nextBillingDate && planData) {
+            const today = new Date();
+            const billingDate = new Date(subData.nextBillingDate);
+            
+            if (billingDate <= today) {
+              // Add pending subscription payment
+              const pendingPayment = {
+                id: `pending-${subData.id}`,
+                amount: planData.priceCents,
+                currency: planData.currency,
+                status: 'PENDING',
+                description: `Subscription Payment: ${planData.name}`,
+                createdAt: subData.nextBillingDate,
+                isPending: true,
+                subscriptionId: subData.id
+              };
+              
+              completedPayments.unshift(pendingPayment); // Add to beginning
+            }
+          }
+        }
+      } catch (err) {
+        console.log('No subscription or subscription data unavailable:', err);
+      }
       
-      setPayments(paymentData);
-      console.log('Payments loaded:', paymentData.length);
+      setPayments(completedPayments);
+      console.log('Payments loaded:', completedPayments.length);
     } catch (err) {
       console.error('Error fetching payments:', err);
       setError('Failed to load payment history');
@@ -198,7 +230,17 @@ const Payments = () => {
                   <StatusBadge status={getStatusColor(payment.status)}>
                     {payment.status}
                   </StatusBadge>
-                  {payment.receiptId && (
+                  {payment.isPending ? (
+                    <Link to={ROUTES.paySubscription}>
+                      <ViewReceiptButton style={{ 
+                        backgroundColor: '#e53e3e',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}>
+                        Pay Now
+                      </ViewReceiptButton>
+                    </Link>
+                  ) : payment.receiptId && (
                     <ViewReceiptButton onClick={() => {
                       // Navigate to receipt view or download
                       console.log('View receipt:', payment.receiptId);
