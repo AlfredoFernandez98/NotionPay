@@ -150,6 +150,13 @@ const Dashboard = () => {
     return `${amount.toFixed(2)} kr`;
   };
 
+  const isPaymentDue = (nextBillingDate) => {
+    if (!nextBillingDate) return false;
+    const today = new Date();
+    const billingDate = new Date(nextBillingDate);
+    return billingDate <= today;
+  };
+
   const formatPlanPrice = (priceCents, currency) => {
     if (!priceCents) return '0';
     return `${(priceCents / 100).toFixed(0)} ${currency || 'DKK'}`;
@@ -288,8 +295,44 @@ const Dashboard = () => {
                       </InfoRow>
                       <InfoRow>
                         <InfoLabel>Next Billing</InfoLabel>
-                        <InfoValue>{formatDate(subscription.nextBillingDate)}</InfoValue>
+                        <InfoValue>
+                          {formatDate(subscription.nextBillingDate)}
+                          {isPaymentDue(subscription.nextBillingDate) && (
+                            <span style={{ 
+                              color: '#e53e3e', 
+                              fontWeight: 'bold', 
+                              marginLeft: '0.5rem',
+                              fontSize: '0.875rem'
+                            }}>
+                              (DUE NOW)
+                            </span>
+                          )}
+                        </InfoValue>
                       </InfoRow>
+                      
+                      {isPaymentDue(subscription.nextBillingDate) && (
+                        <div style={{ marginTop: '1rem' }}>
+                          <Link to={ROUTES.paySubscription}>
+                            <button style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              backgroundColor: '#e53e3e',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '1rem',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                            }}
+                            onMouseOver={(e) => e.target.style.backgroundColor = '#c53030'}
+                            onMouseOut={(e) => e.target.style.backgroundColor = '#e53e3e'}
+                            >
+                              Pay Now - {getCurrentPlanDetails()?.priceCents ? (getCurrentPlanDetails().priceCents / 100).toFixed(2) : '0'} {getCurrentPlanDetails()?.currency || 'DKK'}
+                            </button>
+                          </Link>
+                        </div>
+                      )}
                     </div>
 
                     {/* All Available Plans */}

@@ -9,4 +9,5 @@ export const ROUTES = {
   paymentMethods: "/payment-methods",
   buySMS: "/buy-sms",
   payments: "/payments",
+  paySubscription: "/pay-subscription",
 };

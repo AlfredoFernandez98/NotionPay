@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import PaymentMethods from './pages/PaymentMethods';
 import BuySMS from './pages/BuySMS';
 import Payments from './pages/Payments';
+import PaySubscription from './pages/PaySubscription';
 import NotFound from './pages/NotFound';
 import { ROUTES } from './utils/routes';
 
@@ -28,6 +29,7 @@ const App = () => {
           <Route path={ROUTES.paymentMethods} element={<PaymentMethods />} />
           <Route path={ROUTES.buySMS} element={<BuySMS />} />
           <Route path={ROUTES.payments} element={<Payments />} />
+          <Route path={ROUTES.paySubscription} element={<PaySubscription />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
