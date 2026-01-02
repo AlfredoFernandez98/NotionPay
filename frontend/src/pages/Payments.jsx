@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import apiFacade from '../util/apiFacade';
 import { ROUTES } from '../utils/routes';
+import { formatDateTime } from '../utils/dateFormatter';
 import {
   PageContainer,
   PageHeader,
@@ -90,17 +91,6 @@ const Payments = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('da-DK', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const formatCurrency = (amountCents, currency = 'DKK') => {
@@ -199,7 +189,7 @@ const Payments = () => {
                       </span>
                     )}
                   </PaymentDescription>
-                  <PaymentDate>{formatDate(payment.createdAt)}</PaymentDate>
+                  <PaymentDate>{formatDateTime(payment.createdAt)}</PaymentDate>
                 </PaymentInfo>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <PaymentAmount>

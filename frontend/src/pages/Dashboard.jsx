@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import apiFacade from '../util/apiFacade';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../utils/routes';
+import { formatDate } from '../utils/dateFormatter';
 import {
   DashboardContainer,
   DashboardHeader,
@@ -143,15 +144,6 @@ const Dashboard = () => {
 
     fetchDashboardData();
   }, [isAuthenticated, navigate]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('da-DK', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
 
   const formatCurrency = (amount) => {
     if (!amount) return '0 kr';
