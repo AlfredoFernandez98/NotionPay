@@ -1,0 +1,108 @@
+### ========================================
+### 3. CUSTOMER PROFILE & SMS BALANCE TESTS
+### View and manage customer details
+### ========================================
+
+### Variables
+@baseUrl = http://localhost:7070/api
+@token = eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQyMzQ5NzYsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoiVVNFUiJ9.PXCGtGX02n5J_VNWhuW_WZy4QATw7jmKX_elzStEjXA
+@customerId = 1
+
+### ⚠️ PREREQUISITE: Login first using 1-auth-test.http to get token!
+
+### ========================================
+### CUSTOMER DETAILS
+### ========================================
+
+### Get My Profile
+GET {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK
+### {
+###   "id": 1,
+###   "email": "alice@company-a.com",
+###   "companyName": "Company A Solutions",
+###   "serialNumber": 101010101,
+###   "externalCustomerId": "cus_ext_a_001",
+###   "createdAt": "..."
+### }
+
+### Get All Customers (USER role)
+GET {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK - List of all customers
+
+### ========================================
+### SMS BALANCE
+### ========================================
+
+### Get My SMS Balance
+GET {{baseUrl}}/customers/{{customerId}}/sms-balance
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK
+### {
+###   "id": 1,
+###   "externalCustomerId": "cus_ext_a_001",
+###   "remainingSms": 100,
+###   "lastUpdated": "..."
+### }
+
+### ========================================
+### CUSTOMER + SUBSCRIPTION + SMS (Combined)
+### ========================================
+
+### 1. Get My Profile
+GET {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### 2. Get My Subscription
+GET {{baseUrl}}/customers/{{customerId}}/subscription
+Authorization: Bearer {{token}}
+
+### 3. Get My SMS Balance
+GET {{baseUrl}}/customers/{{customerId}}/sms-balance
+Authorization: Bearer {{token}}
+
+### ========================================
+### FULL CUSTOMER OVERVIEW FLOW
+### ========================================
+
+### Step 1: Who am I?
+GET {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### Step 2: What plan am I on?
+GET {{baseUrl}}/customers/{{customerId}}/subscription
+Authorization: Bearer {{token}}
+
+### Step 3: How many SMS credits do I have?
+GET {{baseUrl}}/customers/{{customerId}}/sms-balance
+Authorization: Bearer {{token}}
+
+### Step 4: What SMS products can I buy?
+GET {{baseUrl}}/products
+
+### ========================================
+### ERROR CASES
+### ========================================
+
+### Access without token
+GET {{baseUrl}}/customers/{{customerId}}
+
+### Expected: 401 Unauthorized
+
+### Access another customer's data (if implemented)
+GET {{baseUrl}}/customers/999
+Authorization: Bearer {{token}}
+
+### Expected: 403 Forbidden or 404 Not Found
+
+### Invalid customer ID format
+GET {{baseUrl}}/customers/abc
+Authorization: Bearer {{token}}
+
+### Expected: 400 Bad Request
+

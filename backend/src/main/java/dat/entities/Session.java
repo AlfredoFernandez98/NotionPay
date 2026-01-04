@@ -1,5 +1,6 @@
 package dat.entities;
 
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,6 +22,9 @@ public class Session {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @Column(nullable = false, unique = true)
+    private String token; // store JWT or a derived token
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
@@ -35,16 +39,23 @@ public class Session {
     @Column(name = "customer_agent")
     private String customerAgent;
 
-    private Boolean active;
+    @Column(columnDefinition = "BOOLEAN DEFAULT true")
+    private Boolean active = true;
 
-    public Session(Customer customer, OffsetDateTime expiresAt, String ip, String customerAgent) {
+    public Session(Customer customer,
+                   String token,
+                   OffsetDateTime expiresAt,
+                   String ip,
+                   String customerAgent) {
         this.customer = customer;
-        this.createdAt = OffsetDateTime.now();
+        this.token = token;
+        this.createdAt = DateTimeUtil.now();
         this.expiresAt = expiresAt;
-        this.lastSeenAt = OffsetDateTime.now();
+        this.lastSeenAt = DateTimeUtil.now();
         this.ip = ip;
         this.customerAgent = customerAgent;
         this.active = true;
     }
+
 }
 

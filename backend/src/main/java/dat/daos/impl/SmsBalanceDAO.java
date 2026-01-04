@@ -19,9 +19,7 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
     private static SmsBalanceDAO instance;
     private static EntityManagerFactory emf;
 
-    /**
-     * Get singleton instance of SmsBalanceDAO
-     */
+  
     public static SmsBalanceDAO getInstance(EntityManagerFactory _emf) {
         if (instance == null) {
             emf = _emf;
@@ -90,8 +88,7 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
     // ========== CUSTOM BUSINESS METHODS ==========
 
     /**
-     * Get SMS Balance by external_customer_id (KEY METHOD!)
-     * This is how we link Customer to SMS Balance
+     * Get SMS Balance by external_customer_id
      */
     public Optional<SmsBalance> getByExternalCustomerId(String externalCustomerId) {
         try (EntityManager em = emf.createEntityManager()) {

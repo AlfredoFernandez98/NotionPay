@@ -39,7 +39,6 @@ public class HibernateConfig {
         return emfTest;
     }
 
-    // TODO: IMPORTANT: Add Entity classes here for them to be registered with Hibernate
     private static void getAnnotationConfiguration(Configuration configuration) {
         // Security entities
         configuration.addAnnotatedClass(User.class);
@@ -53,7 +52,6 @@ public class HibernateConfig {
         
         // Product entities
         configuration.addAnnotatedClass(dat.entities.Product.class);
-        configuration.addAnnotatedClass(dat.entities.SmsProduct.class);
         configuration.addAnnotatedClass(dat.entities.SmsBalance.class);
         
         // Payment entities
@@ -124,9 +122,11 @@ public class HibernateConfig {
     }
 
     private static Properties setTestProperties(Properties props) {
-        //props.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        props.put("hibernate.connection.driver_class", "org.testcontainers.jdbc.ContainerDatabaseDriver");
-        props.put("hibernate.connection.url", "jdbc:tc:postgresql:15.3-alpine3.18:///test_db");
+        props.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+       // props.put("hibernate.connection.driver_class", "org.testcontainers.jdbc.ContainerDatabaseDriver");
+        props.put("hibernate.connection.driver_class", "org.postgresql.Driver");
+        //props.put("hibernate.connection.url", "jdbc:tc:postgresql:15.3-alpine3.18:///test_db");
+        props.put("hibernate.connection.url", "jdbc:postgresql://localhost:5432/test_db"); // for test
         props.put("hibernate.connection.username", "postgres");
         props.put("hibernate.connection.password", "postgres");
         props.put("hibernate.archive.autodetection", "class");

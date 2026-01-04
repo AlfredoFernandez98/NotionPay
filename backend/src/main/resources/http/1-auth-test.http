@@ -1,0 +1,129 @@
+### ========================================
+### 1. AUTHENTICATION TESTS
+### Register, Login, Validate Token, Logout
+### ========================================
+
+### Variables (shared across all test files)
+@baseUrl = http://localhost:7070/api
+@email = alice@company-a.com
+@password = SecurePass123
+@token = eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQyMzc0NzYsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoidXNlciJ9.o3kjH_cIscI9eEsl29BqysebrAV-j09sYF16aJIgWO4
+
+### ========================================
+### STEP 1: Register New Customer
+### ========================================
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "companyName": "Company A Solutions",
+  "serialNumber": 101010101
+}
+
+### Expected: 201 Created with token, customerId, subscriptionId, planName
+
+### ========================================
+### STEP 2: Login
+### ========================================
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Expected: 200 OK with token and sessionID
+### COPY THE TOKEN and update @token variable above!
+
+### ========================================
+### STEP 3: Validate Token
+### ========================================
+POST {{baseUrl}}/auth/validate
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK - Token is valid
+
+### ========================================
+### STEP 4: Logout
+### ========================================
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK - Logged out successfully
+
+### ========================================
+### STEP 5: Try to Use Token After Logout (Should Fail)
+### ========================================
+POST {{baseUrl}}/auth/validate
+Authorization: Bearer {{token}}
+
+### Expected: 401 Unauthorized - Session is inactive
+
+### ========================================
+### Test Different Users
+### ========================================
+
+### Register Bob
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "bob@company-b.com",
+  "password": "SecurePass456",
+  "companyName": "Company B Tech",
+  "serialNumber": 404040404
+}
+
+### Login Bob
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "bob@company-b.com",
+  "password": "SecurePass456"
+}
+
+### ========================================
+### Error Cases
+### ========================================
+
+### Login with wrong password
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "WrongPassword"
+}
+
+### Expected: 401 Unauthorized
+
+### Register with duplicate email
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "NewPassword123",
+  "companyName": "Duplicate Company",
+  "serialNumber": 101010101
+}
+
+### Expected: 422 Unprocessable - User already exists
+
+### Login with non-existent user
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "password": "Password123"
+}
+
+### Expected: 401 Unauthorized
+

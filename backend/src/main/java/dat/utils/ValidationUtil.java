@@ -21,13 +21,7 @@ public class ValidationUtil{
         return true;
     }
 
-    // TODO: Write this method
     public static boolean isStrongPassword(String password) {
-        // Requirements:
-        // - Not null
-        // - At least 8 characters
-        // - Contains at least 1 digit (0-9)
-        // Return true if all requirements met, false otherwise
         if (password == null) {
             throw new IllegalArgumentException("Password cannot be null");
         }
@@ -39,13 +33,7 @@ public class ValidationUtil{
         }
         return true;
     }
-    // TODO: Write this method
     public static boolean isValidCompanyName(String companyName) {
-        // Requirements:
-        // - Not null
-        // - Not empty (after trimming whitespace)
-        // - Max 100 characters
-        // Return true if valid, false otherwise
 
         if (companyName == null){
             throw new NullPointerException("companyName cant be nul");

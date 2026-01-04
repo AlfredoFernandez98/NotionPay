@@ -2,6 +2,7 @@ package dat.entities;
 
 import dat.enums.ActivityLogStatus;
 import dat.enums.ActivityLogType;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,8 +27,8 @@ public class ActivityLog {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    @ManyToOne(optional = true)
-    @JoinColumn(name = "session_id", nullable = true)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "session_id", nullable = false)
     private Session session;
 
     @Enumerated(EnumType.STRING)
@@ -51,7 +52,7 @@ public class ActivityLog {
         this.session = session;
         this.type = type;
         this.status = status;
-        this.timestamp = OffsetDateTime.now();
+        this.timestamp = DateTimeUtil.now();
         this.metadata = metadata;
     }
 }

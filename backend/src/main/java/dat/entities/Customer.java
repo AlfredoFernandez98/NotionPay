@@ -23,7 +23,7 @@ public class Customer {
     @Column(name = "company_name", unique = true)
     private String companyName;
     
-    @Column(name = "serial_number")
+    @Column(name = "serial_number", unique = true)
     private Integer serialNumber;
     
     @Column(name = "external_customer_id", unique = true)
@@ -32,10 +32,11 @@ public class Customer {
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
-    public Customer(User user, String companyName, Integer serialNumber) {
+    public Customer(User user, String companyName, Integer serialNumber, String externalCustomerId, OffsetDateTime createdAt) {
         this.user = user;
         this.companyName = companyName;
         this.serialNumber = serialNumber;
-        this.createdAt = OffsetDateTime.now();
+        this.externalCustomerId = externalCustomerId;
+        this.createdAt = createdAt;
     }
 }

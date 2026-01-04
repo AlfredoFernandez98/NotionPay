@@ -1,6 +1,7 @@
 package dat.entities;
 
 import dat.enums.PaymentMethodStatus;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -66,8 +67,8 @@ public class PaymentMethod {
         this.isDefault = isDefault;
         this.status = status;
         this.fingerprint = fingerprint;
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
+        this.createdAt = DateTimeUtil.now();
+        this.updatedAt = DateTimeUtil.now();
     }
 }
 

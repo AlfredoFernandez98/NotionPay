@@ -11,11 +11,13 @@ import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dat.config.HibernateConfig;
-import dat.daos.impl.CustomerDAO;
+import dat.daos.impl.*;
 import dat.dtos.RegisterRequest;
-import dat.entities.Customer;
-import dat.entities.Plan;
-import dat.entities.SerialLink;
+import dat.entities.*;
+import dat.enums.ActivityLogStatus;
+import dat.enums.ActivityLogType;
+import dat.enums.AnchorPolicy;
+import dat.enums.SubscriptionStatus;
 import dat.security.daos.ISecurityDAO;
 import dat.security.daos.SecurityDAO;
 import dat.security.dtos.UserDTO;
@@ -23,6 +25,7 @@ import dat.security.entities.User;
 import dat.security.exceptions.ApiException;
 import dat.security.exceptions.ValidationException;
 import dat.services.SerialLinkVerificationService;
+import dat.utils.DateTimeUtil;
 import dat.utils.Utils;
 import dat.utils.ValidationUtil;
 import io.javalin.http.Handler;
@@ -36,8 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.ParseException;
-import java.util.Date;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,7 +56,11 @@ public class SecurityController implements ISecurityController {
     private static Logger logger = LoggerFactory.getLogger(SecurityController.class);
     
     private SerialLinkVerificationService serialLinkService;
+    private SessionDAO sessionDAO;
     private CustomerDAO customerDAO;
+    private ActivityLogDAO activityLogDAO;
+    private SubscriptionDAO subscriptionDAO;
+    private SmsBalanceDAO smsBalanceDAO;
 
     private SecurityController() { }
 
@@ -64,7 +70,11 @@ public class SecurityController implements ISecurityController {
         }
         securityDAO = new SecurityDAO(HibernateConfig.getEntityManagerFactory());
         instance.serialLinkService = SerialLinkVerificationService.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.sessionDAO = SessionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         instance.customerDAO = CustomerDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.activityLogDAO = ActivityLogDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.subscriptionDAO = SubscriptionDAO.getInstance(HibernateConfig.getEntityManagerFactory());
+        instance.smsBalanceDAO = SmsBalanceDAO.getInstance(HibernateConfig.getEntityManagerFactory());
         return instance;
     }
 
@@ -77,9 +87,37 @@ public class SecurityController implements ISecurityController {
                 UserDTO verifiedUser = securityDAO.getVerifiedUser(user.getEmail(), user.getPassword());
                 String token = createToken(verifiedUser);
 
+                Customer customer = customerDAO.getByUserEmail(verifiedUser.getEmail())
+                      .orElseThrow(()-> new EntityNotFoundException("Customer with email " + verifiedUser.getEmail() + " not found"));
+
+
+                var expiresAt = DateTimeUtil.nowPlusHours(2);
+
+                String ip = ctx.req().getRemoteAddr();
+                String userAgent =  ctx.header("User-Agent");
+                if(userAgent == null){
+                    userAgent = "unknown";
+                }
+
+                Session session = new Session(customer,token,expiresAt,ip,userAgent);
+                sessionDAO.create(session);
+                Map<String, Object> metadata = Map.of(
+                        "ip"+ ctx.ip(),
+                        "device" + userAgent
+                );
+                ActivityLog activityLog = new ActivityLog(
+                        customer,
+                        session,
+                        ActivityLogType.LOGIN,
+                        ActivityLogStatus.SUCCESS,
+                        metadata
+                );
+                activityLogDAO.create(activityLog);
                 ctx.status(200).json(returnObject
                         .put("token", token)
-                        .put("email", verifiedUser.getEmail()));
+                        .put("email", verifiedUser.getEmail())
+                        .put("sessionID", session.getId())
+                        .put("customerId", customer.getId()));
 
             } catch (EntityNotFoundException | ValidationException e) {
                 ctx.status(401);
@@ -112,7 +150,7 @@ public class SecurityController implements ISecurityController {
                     return;
                 }
 
-                // Step 1: Verify serial number exists and is available
+                // Verify serial number and email match
                 boolean isValid = serialLinkService.verifySerialNumberAndEmail(registerRequest.serialNumber,registerRequest.email);
                 if (!isValid) {
                     ctx.status(HttpStatus.FORBIDDEN);
@@ -120,47 +158,86 @@ public class SecurityController implements ISecurityController {
                     logger.warn("Registration failed: Invalid serial number {}", registerRequest.serialNumber);
                     return;
                 }
-
-                // Step 2: Get the Plan associated with this serial number
-                Plan eligiblePlan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
-                if (eligiblePlan == null) {
-                    ctx.status(HttpStatus.INTERNAL_SERVER_ERROR);
-                    ctx.json(returnObject.put("msg", "Could not find plan for serial number"));
-                    logger.error("Plan not found for valid serial number {}", registerRequest.serialNumber);
-                    return;
-                }
-
-                // Step 3: Get the full SerialLink entity
-                SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
                 
-                // Step 4: Create User
+                SerialLink serialLink = serialLinkService.getSerialLink(registerRequest.serialNumber);
+
+                // Create User
                 User user = securityDAO.createUser(registerRequest.email, registerRequest.password);
                 logger.info("User created: {}", user.getEmail());
                 
-                // Step 5: Create Customer (linked to User and serial number)
+                // Create Customer (with external_customer_id from SerialLink)
                 Customer customer = customerDAO.createCustomer(
                     user, 
                     registerRequest.companyName, 
                     registerRequest.serialNumber
                 );
-                logger.info("Customer created: {} with serial {}", customer.getCompanyName(), customer.getSerialNumber());
+                logger.info("Customer created: {} with ID: {}", customer.getCompanyName(), customer.getId());
                 
-                // Step 6: Link Customer to SerialLink (marks as VERIFIED)
-                serialLinkService.linkCustomerToSerialLink(registerRequest.serialNumber, customer);
-                logger.info("SerialLink {} verified and linked to customer {}", registerRequest.serialNumber, customer.getId());
+                // Get Plan for subscription
+                Plan plan = serialLinkService.getPlanForSerialNumber(registerRequest.serialNumber);
                 
-                // Step 7: Create JWT token
+                // Create Subscription with ACTIVE status (customer already subscribed in external system)
+                Subscription subscription = new Subscription(
+                    customer,
+                    plan,
+                    SubscriptionStatus.ACTIVE,
+                    DateTimeUtil.now(),
+                    serialLink.getNextPaymentDate(),
+                    AnchorPolicy.ANNIVERSARY
+                );
+                subscriptionDAO.create(subscription);
+                logger.info("Subscription created: {} for {} with next payment on {}", 
+                    plan.getName(), customer.getCompanyName(), serialLink.getNextPaymentDate());
+                
+                // Create SmsBalance linked via external_customer_id
+                SmsBalance smsBalance = new SmsBalance(
+                    customer.getExternalCustomerId(), 
+                    serialLink.getInitialSmsBalance()
+                );
+                smsBalanceDAO.create(smsBalance);
+                logger.info("SMS Balance created: {} credits for external ID: {}", 
+                    serialLink.getInitialSmsBalance(), customer.getExternalCustomerId());
+                
+                // Create JWT token
                 String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
                 
-                // Step 8: Return success response
+                // Create Session for activity logging
+                java.time.OffsetDateTime expiresAt = DateTimeUtil.nowPlusHours(24);
+                String ip = ctx.ip();
+                String userAgent = ctx.header("User-Agent");
+                if (userAgent == null) {
+                    userAgent = "unknown";
+                }
+                Session session = new Session(customer, token, expiresAt, ip, userAgent);
+                sessionDAO.create(session);
+                
+                // Log subscription creation activity
+                Map<String, Object> subscriptionMetadata = new HashMap<>();
+                subscriptionMetadata.put("subscriptionId", subscription.getId());
+                subscriptionMetadata.put("planId", plan.getId());
+                subscriptionMetadata.put("planName", plan.getName());
+                subscriptionMetadata.put("startDate", subscription.getStartDate().toString());
+                subscriptionMetadata.put("nextBillingDate", subscription.getNextBillingDate().toString());
+                
+                ActivityLog subscriptionLog = new ActivityLog(
+                    customer,
+                    session,
+                    ActivityLogType.SUBSCRIPTION_CREATED,
+                    ActivityLogStatus.SUCCESS,
+                    subscriptionMetadata
+                );
+                activityLogDAO.create(subscriptionLog);
+                
+                // Return success response
                 ctx.status(HttpStatus.CREATED).json(objectMapper.createObjectNode()
                         .put("token", token)
                         .put("email", user.getEmail())
                         .put("customerId", customer.getId())
-                        .put("serialLinkId", serialLink.getId())
-                        .put("planId", eligiblePlan.getId())
-                        .put("planName", eligiblePlan.getName())
-                        .put("msg", "Registration successful! You are subscribed to " + eligiblePlan.getName()));
+                        .put("subscriptionId", subscription.getId())
+                        .put("planId", plan.getId())
+                        .put("planName", plan.getName())
+                        .put("initialSmsCredits", serialLink.getInitialSmsBalance())
+                        .put("msg", "Registration successful! You are subscribed to " + plan.getName()));
                         
             } catch (EntityExistsException e) {
                 ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -299,6 +376,151 @@ public class SecurityController implements ISecurityController {
                 ctx.status(200).json(returnObject.put("msg", "Role " + newRole + " added to user"));
             } catch (EntityNotFoundException e) {
                 ctx.status(404).json("{\"msg\": \"User not found\"}");
+            }
+        };
+    }
+
+    /**
+     * PURPOSE: Validate an existing JWT token and verify the session exists in database
+     * 
+     * ENDPOINT: POST /api/auth/validate
+     * AUTHORIZATION: ANYONE (no authentication required to validate a token)
+     * 
+     * REQUEST: Must include Authorization header with Bearer token
+     *   Example: Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     * 
+     * RESPONSE on SUCCESS (200):
+     *   {
+     *     "msg": "Token is valid",
+     *     "email": "alice@company-a.com",
+     *     "sessionID": 123,
+     *     "expiresAt": "2025-11-19T15:30:45+02:00"
+     *   }
+     * 
+     * RESPONSE on FAILURE (401):
+     *   - "Authorization header missing" → No Bearer token provided
+     *   - "Authorization header malformed" → Wrong format (not "Bearer TOKEN")
+     *   - "Invalid token" → Token signature is invalid or expired
+     *   - "Session not found" → Token exists but no session in database
+     *   - "Session is inactive" → Session was deactivated
+     *   - "Session has expired" → Token expiry time has passed
+     * 
+     * USE CASES:
+     *   1. Frontend: Check if user is still logged in
+     *   2. Frontend: Before making API calls, validate token is still valid
+     *   3. Logout: Find session by token to deactivate it
+     *   4. Testing: Verify sessions are created after login
+     *   5. Monitoring: Check active sessions in the system
+     * 
+     * IMPORTANT: This endpoint does NOT require the authenticate() middleware
+     *            because it validates the token itself
+     */
+    @Override
+    public Handler validate() {
+        return (ctx) -> {
+            ObjectNode returnObject = objectMapper.createObjectNode();
+            try {
+                // Step 1: Extract Authorization header
+                String header = ctx.header("Authorization");
+                if (header == null) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header missing"));
+                    return;
+                }
+
+                // Step 2: Parse "Bearer TOKEN" format
+                String[] headerParts = header.split(" ");
+                if (headerParts.length != 2) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header malformed"));
+                    return;
+                }
+
+                // Step 3: Extract token and verify JWT signature & expiration
+                String token = headerParts[1];
+                UserDTO verifiedUser = verifyToken(token);
+
+                if (verifiedUser == null) {
+                    ctx.status(401).json(returnObject.put("msg", "Invalid token"));
+                    return;
+                }
+
+                // Step 4: Check if session exists in database (extra security layer)
+                Optional<Session> session = sessionDAO.findByToken(token);
+                if (session.isEmpty()) {
+                    ctx.status(401).json(returnObject.put("msg", "Session not found"));
+                    return;
+                }
+
+                // Step 5: Verify session is still active (not manually deactivated)
+                if (!session.get().getActive()) {
+                    ctx.status(401).json(returnObject.put("msg", "Session is inactive"));
+                    return;
+                }
+
+                // Step 6: Verify session has not expired (double-check with database)
+                if (DateTimeUtil.now().isAfter(session.get().getExpiresAt())) {
+                    ctx.status(401).json(returnObject.put("msg", "Session has expired"));
+                    return;
+                }
+
+                // Step 7: All checks passed! Return success with session details
+                ctx.status(200).json(returnObject
+                        .put("msg", "Token is valid")
+                        .put("email", verifiedUser.getEmail())
+                        .put("sessionID", session.get().getId())
+                        .put("expiresAt", session.get().getExpiresAt().toString()));
+
+            } catch (Exception e) {
+                // If anything unexpected happens, return 401 Unauthorized
+                ctx.status(401);
+                logger.error("Token validation failed: " + e.getMessage());
+                ctx.json(returnObject.put("msg", "Token validation failed: " + e.getMessage()));
+            }
+        };
+    }
+
+    @Override
+    public Handler logout() {
+        return (ctx) -> {
+            ObjectNode returnObject = objectMapper.createObjectNode();
+            try {
+                // Extract token from Authorization header
+                String header = ctx.header("Authorization");
+                if (header == null || !header.startsWith("Bearer ")) {
+                    ctx.status(401).json(returnObject.put("msg", "Authorization header missing"));
+                    return;
+                }
+
+                String token = header.substring(7);
+
+                // Find session by token
+                Optional<Session> sessionOpt = sessionDAO.findByToken(token);
+                if (sessionOpt.isEmpty()) {
+                    ctx.status(404).json(returnObject.put("msg", "Session not found"));
+                    return;
+                }
+
+                Session session = sessionOpt.get();
+
+                // Deactivate session
+                session.setActive(false);
+                sessionDAO.update(session);
+
+                // Log logout activity
+                Customer customer = session.getCustomer();
+                ActivityLog activityLog = new ActivityLog(
+                        customer,
+                        session,
+                        ActivityLogType.LOGOUT,
+                        ActivityLogStatus.SUCCESS,
+                        Map.of("ip", ctx.ip())
+                );
+                activityLogDAO.create(activityLog);
+
+                ctx.status(200).json(returnObject.put("msg", "Logged out successfully"));
+
+            } catch (Exception e) {
+                logger.error("Logout failed: " + e.getMessage());
+                ctx.status(500).json(returnObject.put("msg", "Logout failed: " + e.getMessage()));
             }
         };
     }

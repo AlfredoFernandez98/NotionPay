@@ -2,6 +2,7 @@ package dat.entities;
 
 import dat.enums.Currency;
 import dat.enums.PaymentStatus;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,8 +24,8 @@ public class Payment {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "payment_method_id", nullable = false)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "payment_method_id", nullable = true)
     private PaymentMethod paymentMethod;
 
     @ManyToOne(optional = true)
@@ -63,7 +64,7 @@ public class Payment {
         this.priceCents = priceCents;
         this.currency = currency;
         this.processorIntentId = processorIntentId;
-        this.createdAt = OffsetDateTime.now();
+        this.createdAt = DateTimeUtil.now();
     }
 }
 

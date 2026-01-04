@@ -1,0 +1,16 @@
+# Backend Configuration Example
+# Copy this file to config.properties and fill in your actual values
+
+# JWT Configuration
+SECRET_KEY=generate_a_random_64_character_hex_string_here
+ISSUER=YourCompanyName
+TOKEN_EXPIRE_TIME=1800000
+
+# Database Configuration
+DB_NAME=notionpay
+
+# Stripe API Keys (Test Mode)
+# Get these from: https://dashboard.stripe.com/test/apikeys
+STRIPE_SECRET_KEY=sk_test_your_secret_key_here
+STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
+

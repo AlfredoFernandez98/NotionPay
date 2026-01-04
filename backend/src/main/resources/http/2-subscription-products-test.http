@@ -1,0 +1,116 @@
+### ========================================
+### 2. SUBSCRIPTION & PRODUCTS TESTS
+### View subscriptions, plans, and products
+### ========================================
+
+### Variables
+@baseUrl = http://localhost:7070/api
+@token = eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJBbGZyZWRvIEZlcm5hbmRleiIsInN1YiI6ImFsaWNlQGNvbXBhbnktYS5jb20iLCJleHAiOjE3NjQyMzQ5NzYsImVtYWlsIjoiYWxpY2VAY29tcGFueS1hLmNvbSIsInJvbGVzIjoiVVNFUiJ9.PXCGtGX02n5J_VNWhuW_WZy4QATw7jmKX_elzStEjXA
+@customerId = 1
+
+### ⚠️ PREREQUISITE: Login first using 1-auth-test.http to get token!
+
+### ========================================
+### PLANS (Public - No Auth Required)
+### ========================================
+
+### Get All Plans
+GET {{baseUrl}}/plans
+
+### Expected: 200 OK - List of all active plans
+
+### Get Single Plan
+GET {{baseUrl}}/plans/1
+
+### Expected: 200 OK - Basic Monthly plan details
+
+### Get Non-Existent Plan
+GET {{baseUrl}}/plans/999
+
+### Expected: 404 Not Found
+
+### ========================================
+### PRODUCTS (Public - No Auth Required)
+### ========================================
+
+### Get All SMS Products
+GET {{baseUrl}}/products
+
+### Expected: 200 OK - List of SMS bundles
+### Example: "100 SMS Credits" for 500 DKK
+
+### Get Single Product
+GET {{baseUrl}}/products/1
+
+### Expected: 200 OK - Product details
+
+### Get Non-Existent Product
+GET {{baseUrl}}/products/999
+
+### Expected: 404 Not Found
+
+### ========================================
+### SUBSCRIPTIONS (Requires Auth)
+### ========================================
+
+### Get Customer's Active Subscription
+GET {{baseUrl}}/customers/{{customerId}}/subscription
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK
+### {
+###   "id": 1,
+###   "customerId": 1,
+###   "customerEmail": "alice@company-a.com",
+###   "planId": 1,
+###   "planName": "Basic Monthly",
+###   "status": "ACTIVE",
+###   "nextBillingDate": "2025-12-11T...",
+###   "anchorPolicy": "ANNIVERSARY"
+### }
+
+### Get Subscription by ID
+GET {{baseUrl}}/subscriptions/1
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK - Same subscription details
+
+### Get Non-Existent Subscription
+GET {{baseUrl}}/subscriptions/999
+Authorization: Bearer {{token}}
+
+### Expected: 404 Not Found
+
+### ========================================
+### SUBSCRIPTION MANAGEMENT
+### ========================================
+
+### Cancel Subscription
+PUT {{baseUrl}}/subscriptions/1/cancel
+Authorization: Bearer {{token}}
+
+### Expected: 200 OK - Status changed to CANCELED, endDate set
+
+### Verify Cancellation
+GET {{baseUrl}}/customers/{{customerId}}/subscription
+Authorization: Bearer {{token}}
+
+### Expected: 404 Not Found - No active subscription
+
+### ========================================
+### COMBINED FLOW TEST
+### ========================================
+
+### 1. View available plans
+GET {{baseUrl}}/plans
+
+### 2. View available SMS products
+GET {{baseUrl}}/products
+
+### 3. Check my current subscription
+GET {{baseUrl}}/customers/{{customerId}}/subscription
+Authorization: Bearer {{token}}
+
+### 4. Check when my next payment is due
+### (Look at "nextBillingDate" from subscription response)
+

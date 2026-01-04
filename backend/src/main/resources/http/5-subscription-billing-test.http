@@ -1,0 +1,206 @@
+### ========================================
+### 5. SUBSCRIPTION BILLING TEST
+### Test SubscriptionService Integration
+### ========================================
+
+### Variables
+@baseUrl = http://localhost:7070
+@jwt = {{login_response.response.body.token}}
+
+### ========================================
+### STEP 1: Login
+### ========================================
+# @name login_response
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@acme.com",
+  "password": "password123"
+}
+
+### ========================================
+### STEP 2: Get Customer's Active Subscription
+### ========================================
+GET {{baseUrl}}/api/customers/1/subscriptions
+Authorization: Bearer {{jwt}}
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "planId": 1,
+#   "status": "ACTIVE",
+#   "nextBillingDate": "2025-01-15T10:00:00Z",  ← Note this date
+#   "startDate": "2025-01-15T10:00:00Z"
+# }
+
+### ========================================
+### STEP 3: Process Subscription Payment
+### ========================================
+# @name payment_response
+POST {{baseUrl}}/api/payments
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "subscriptionId": 1,
+  "amount": 9900,
+  "currency": "dkk",
+  "description": "Monthly subscription payment"
+}
+
+### Expected Response:
+# {
+#   "msg": "Payment processed successfully",
+#   "paymentId": 1,
+#   "status": "COMPLETED",
+#   "amount": 9900,
+#   "currency": "dkk",
+#   "receiptId": 1,
+#   "receiptNumber": "RCP-1734523456789",
+#   "subscriptionId": 1,
+#   "nextBillingDate": "2025-02-15T10:00:00Z"  ← ✨ UPDATED! (one month later)
+# }
+
+### ========================================
+### STEP 4: Verify Subscription Updated
+### ========================================
+GET {{baseUrl}}/api/customers/1/subscriptions
+Authorization: Bearer {{jwt}}
+
+### Expected Response:
+# {
+#   "id": 1,
+#   "customerId": 1,
+#   "planId": 1,
+#   "status": "ACTIVE",
+#   "nextBillingDate": "2025-02-15T10:00:00Z",  ← ✅ Updated!
+#   "startDate": "2025-01-15T10:00:00Z"
+# }
+
+### ========================================
+### STEP 5: Check Payment History
+### ========================================
+GET {{baseUrl}}/api/customers/1/payments
+Authorization: Bearer {{jwt}}
+
+### Expected: List of all payments for customer
+
+### ========================================
+### STEP 6: Get Receipt
+### ========================================
+GET {{baseUrl}}/api/payments/{{payment_response.response.body.paymentId}}/receipt
+Authorization: Bearer {{jwt}}
+
+### Expected: Receipt details with Stripe URL
+
+### ========================================
+### TEST CASE 2: Second Payment (Next Month)
+### ========================================
+
+### Process another payment to see billing cycle
+POST {{baseUrl}}/api/payments
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "subscriptionId": 1,
+  "amount": 9900,
+  "currency": "dkk",
+  "description": "Monthly subscription payment - Month 2"
+}
+
+### Expected Response:
+# {
+#   "nextBillingDate": "2025-03-15T10:00:00Z"  ← Should be one month after previous
+# }
+
+### ========================================
+### TEST CASE 3: Product Payment (No Subscription)
+### ========================================
+
+### This should NOT update any subscription
+POST {{baseUrl}}/api/payments
+Authorization: Bearer {{jwt}}
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "paymentMethodId": 1,
+  "productId": 1,
+  "amount": 5000,
+  "currency": "dkk",
+  "description": "SMS package purchase"
+}
+
+### Expected Response:
+# {
+#   "msg": "Payment processed successfully",
+#   "paymentId": 3,
+#   "status": "COMPLETED",
+#   "amount": 5000,
+#   "currency": "dkk"
+#   // Note: No subscriptionId or nextBillingDate fields
+# }
+
+### ========================================
+### TEST CASE 4: Check Subscriptions Due for Billing
+### (This will be used by automated billing job in Phase 2)
+### ========================================
+
+### Note: This endpoint doesn't exist yet, but shows what Phase 2 will add
+# GET {{baseUrl}}/api/admin/subscriptions/due
+# Authorization: Bearer {{jwt}}
+
+### Expected: List of subscriptions where nextBillingDate <= today
+
+### ========================================
+### VERIFICATION CHECKLIST
+### ========================================
+
+# After running STEP 3 (Process Subscription Payment):
+# 
+# 1. ✅ Payment created successfully
+# 2. ✅ Receipt generated
+# 3. ✅ Response includes "nextBillingDate"
+# 4. ✅ nextBillingDate is one month later (monthly plan)
+# 5. ✅ Subscription status remains "ACTIVE"
+# 6. ✅ Database subscription.next_billing_date is updated
+#
+# Check logs for:
+# - "Subscription X updated with new billing date: ..."
+# - "Next billing date calculated: ..."
+
+### ========================================
+### EDGE CASE TESTS
+### ========================================
+
+### Test monthly billing on month-end date
+### If subscription nextBillingDate is Jan 31:
+### Expected result: Feb 28 (or Feb 29 in leap year)
+
+### Test yearly billing
+### If subscription has yearly plan:
+### Expected result: Same date, one year later
+
+### ========================================
+### NOTES
+### ========================================
+
+# Phase 1 Complete ✅:
+# - SubscriptionService created
+# - PaymentController integrated
+# - Subscriptions update automatically after payment
+#
+# Phase 2 (Future) ⏳:
+# - Automated billing job
+# - Automatic charging on nextBillingDate
+# - Failed payment retry logic
+# - Webhook integration
+
+### ========================================
