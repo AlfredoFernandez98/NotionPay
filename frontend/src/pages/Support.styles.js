@@ -97,25 +97,35 @@ export const ContactDetails = styled.div`
 `;
 
 export const ContactItem = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: 150px auto;
+  gap: 12px;
   justify-content: center;
-  gap: 8px;
-  text-align: center;
 
   @media (max-width: 640px) {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 4px;
+    text-align: center;
   }
 `;
 
 export const ContactLabel = styled.span`
   font-weight: 600;
   color: #4a5568;
-  min-width: 130px;
+  text-align: right;
+
+  @media (max-width: 640px) {
+    text-align: center;
+  }
 `;
 
 export const ContactValue = styled.span`
   color: #718096;
+  text-align: left;
+
+  @media (max-width: 640px) {
+    text-align: center;
+  }
 `;
 
 export const InfoSection = styled.div`

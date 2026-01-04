@@ -45,14 +45,9 @@ const Login = () => {
     setSuccess('');
     setLoading(true);
 
-    console.log('=== LOGIN ATTEMPT ===');
-    console.log('Email:', email);
-    console.log('Backend URL:', import.meta.env.VITE_API_URL || 'http://localhost:7070/api');
-
     try {
       // Call the login API
       const response = await apiFacade.login(email, password);
-      console.log('Login response received:', response);
       
       // Only proceed if we have a valid token
       if (!response.token) {
@@ -69,7 +64,6 @@ const Login = () => {
       setAuth(user, response.token);
       
       // Navigate to dashboard after successful login
-      console.log('Login successful! Redirecting to dashboard...');
       navigate('/dashboard');
       
     } catch (err) {
@@ -80,7 +74,6 @@ const Login = () => {
         // If fullError is a promise, resolve it
         try {
           const errorDetails = await err.fullError;
-          console.error('Error details:', errorDetails);
           setError(errorDetails.msg || 'Invalid email or password. Please try again.');
         } catch {
           setError('Invalid email or password. Please try again.');
@@ -90,9 +83,6 @@ const Login = () => {
       } else {
         setError('Invalid email or password. Please try again.');
       }
-      
-      // Make sure navigation doesn't happen on error
-      console.log('Login failed - staying on login page');
     } finally {
       setLoading(false);
     }

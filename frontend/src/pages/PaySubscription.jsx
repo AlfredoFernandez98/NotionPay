@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { useAuth } from '../hooks/useAuth';
@@ -57,7 +57,6 @@ const stripePromise = loadStripe(stripePublishableKey);
 const PaySubscription = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
@@ -78,16 +77,7 @@ const PaySubscription = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate(ROUTES.login);
-      return;
-    }
-
-    fetchData();
-  }, [isAuthenticated, navigate]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -123,7 +113,16 @@ const PaySubscription = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [useOneTimePayment]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate(ROUTES.login);
+      return;
+    }
+
+    fetchData();
+  }, [isAuthenticated, navigate, fetchData]);
 
   const handleCardReady = (isComplete, elements) => {
     setStripeCardReady(isComplete);

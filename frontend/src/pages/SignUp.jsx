@@ -46,11 +46,6 @@ const SignUp = () => {
       // Call the register API
       const response = await apiFacade.register(email, password, companyName, serialNumber);
       
-      // Show success message
-      console.log('Registration successful!');
-      console.log('Plan:', response.planName);
-      console.log('Initial SMS credits:', response.initialSmsCredits);
-      
       // Navigate to login page with success message (do NOT auto-login)
       navigate(ROUTES.login, { 
         state: { 
