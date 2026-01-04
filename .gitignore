@@ -215,3 +215,15 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/java,maven,osx,windows,intellij
+
+### Environment Variables ###
+# Local environment variables containing secrets
+.env
+.env.local
+.env.*.local
+frontend/.env
+backend/.env
+
+# Keep example files for documentation
+!.env.example
+!.env.*.example
