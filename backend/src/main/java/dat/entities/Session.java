@@ -1,5 +1,6 @@
 package dat.entities;
 
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,9 +49,9 @@ public class Session {
                    String customerAgent) {
         this.customer = customer;
         this.token = token;
-        this.createdAt = OffsetDateTime.now();
+        this.createdAt = DateTimeUtil.now();
         this.expiresAt = expiresAt;
-        this.lastSeenAt = OffsetDateTime.now();
+        this.lastSeenAt = DateTimeUtil.now();
         this.ip = ip;
         this.customerAgent = customerAgent;
         this.active = true;

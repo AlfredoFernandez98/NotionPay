@@ -2,6 +2,7 @@ package dat.entities;
 
 import dat.enums.ActivityLogStatus;
 import dat.enums.ActivityLogType;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,7 +52,7 @@ public class ActivityLog {
         this.session = session;
         this.type = type;
         this.status = status;
-        this.timestamp = OffsetDateTime.now();
+        this.timestamp = DateTimeUtil.now();
         this.metadata = metadata;
     }
 }

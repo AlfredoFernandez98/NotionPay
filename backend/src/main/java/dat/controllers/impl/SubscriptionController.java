@@ -11,6 +11,8 @@ import dat.entities.Subscription;
 import dat.enums.ActivityLogStatus;
 import dat.enums.ActivityLogType;
 import dat.enums.SubscriptionStatus;
+import dat.utils.DateTimeUtil;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -44,7 +46,7 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             Optional<Subscription> subscription = subscriptionDAO.getById(id);
             
             if (subscription.isEmpty()) {
-                ctx.status(404).json("{\"msg\": \"Subscription not found with ID: " + id + "\"}");
+                ErrorResponse.notFound(ctx, "Subscription not found with ID: " + id);
                 return;
             }
             
@@ -53,10 +55,9 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             logger.info("Retrieved subscription ID: {}", id);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid subscription ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid subscription ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving subscription: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to retrieve subscription: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to retrieve subscription", logger, e);
         }
     }
 
@@ -70,7 +71,7 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             Optional<Subscription> subscription = subscriptionDAO.getActiveSubscriptionForCustomer(customerId);
             
             if (subscription.isEmpty()) {
-                ctx.status(404).json("{\"msg\": \"No active subscription found for customer ID: " + customerId + "\"}");
+                ErrorResponse.notFound(ctx, "No active subscription found for customer ID: " + customerId);
                 return;
             }
             
@@ -79,10 +80,9 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             logger.info("Retrieved subscription for customer ID: {}", customerId);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving customer subscription: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to retrieve subscription: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to retrieve subscription", logger, e);
         }
     }
 
@@ -96,13 +96,13 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             Optional<Subscription> subscriptionOpt = subscriptionDAO.getById(id);
             
             if (subscriptionOpt.isEmpty()) {
-                ctx.status(404).json("{\"msg\": \"Subscription not found with ID: " + id + "\"}");
+                ErrorResponse.notFound(ctx, "Subscription not found with ID: " + id);
                 return;
             }
             
             Subscription subscription = subscriptionOpt.get();
             subscription.setStatus(SubscriptionStatus.CANCELED);
-            subscription.setEndDate(java.time.OffsetDateTime.now());
+            subscription.setEndDate(DateTimeUtil.now());
             subscriptionDAO.update(subscription);
             
             // Log activity
@@ -129,31 +129,30 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             logger.info("Canceled subscription ID: {}", id);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid subscription ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid subscription ID format");
         } catch (Exception e) {
-            logger.error("Error canceling subscription: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to cancel subscription: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to cancel subscription", logger, e);
         }
     }
 
     @Override
     public void readAll(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Not implemented - use customer-specific endpoint\"}");
+        ErrorResponse.notImplemented(ctx, "Not implemented - use customer-specific endpoint");
     }
 
     @Override
     public void create(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Subscriptions are created automatically during registration\"}");
+        ErrorResponse.notImplemented(ctx, "Subscriptions are created automatically during registration");
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Use cancel endpoint instead\"}");
+        ErrorResponse.notImplemented(ctx, "Use cancel endpoint instead");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Subscriptions cannot be deleted, only canceled\"}");
+        ErrorResponse.notImplemented(ctx, "Subscriptions cannot be deleted, only canceled");
     }
 
     /**

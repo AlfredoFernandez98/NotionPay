@@ -7,6 +7,7 @@ import dat.entities.SerialLink;
 import dat.enums.Currency;
 import dat.enums.Period;
 import dat.enums.ProductType;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
@@ -41,9 +42,9 @@ public class SerialLinkMigration {
             createProduct(em, ProductType.SMS, "100 SMS Credits", 50000, "Buy 100 SMS messages for emergency notifications", 100);
             
             // Mock data: Customers from external system with payment due dates
-            java.time.OffsetDateTime now = java.time.OffsetDateTime.now();
+            java.time.OffsetDateTime now = DateTimeUtil.now();
             createSerialLink(em, 101010101, "cus_ext_a_001", "alice@company-a.com", "Basic Monthly", 100, now.plusDays(15));
-            createSerialLink(em, 404040404, "cus_ext_b_002", "bob@company-b.com", "Professional Monthly", 500, now.plusDays(7));
+            createSerialLink(em, 404040404, "cus_ext_b_002", "bob@company-b.com", "Professional Monthly", 500, now); // Payment due TODAY for testing
             createSerialLink(em, 505050505, "cus_ext_c_003", "charlie@company-c.com", "Enterprise Yearly", 1000, now.plusMonths(2));
             createSerialLink(em, 202020202, "cus_ext_d_004", "diana@company-d.com", "Basic Monthly", 100, now.plusDays(30));
             createSerialLink(em, 999999999, "cus_ext_e_005", "eve@company-e.com", "Basic Monthly", 100, now.plusDays(5));

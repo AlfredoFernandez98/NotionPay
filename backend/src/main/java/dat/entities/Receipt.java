@@ -1,6 +1,7 @@
 package dat.entities;
 
 import dat.enums.ReceiptStatus;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -83,7 +84,7 @@ public class Receipt {
         this.pmExpYear = pmExpYear;
         this.processorIntentId = processorIntentId;
         this.metadata = metadata;
-        this.createdAt = OffsetDateTime.now();
+        this.createdAt = DateTimeUtil.now();
     }
 }
 

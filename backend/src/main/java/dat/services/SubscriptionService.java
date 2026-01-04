@@ -5,6 +5,7 @@ import dat.entities.Payment;
 import dat.entities.Subscription;
 import dat.enums.Period;
 import dat.enums.SubscriptionStatus;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +27,7 @@ public class SubscriptionService {
     
     private final SubscriptionDAO subscriptionDAO;
 
-    /**
-     * Get singleton instance of SubscriptionService
-     * 
-     * @param emf EntityManagerFactory for database operations
-     * @return SubscriptionService instance
-     */
+
     public static SubscriptionService getInstance(EntityManagerFactory emf) {
         if (instance == null) {
             instance = new SubscriptionService(emf);
@@ -175,7 +171,7 @@ public class SubscriptionService {
         logger.info("Fetching subscriptions due for billing");
         
         try {
-            OffsetDateTime now = OffsetDateTime.now();
+            OffsetDateTime now = DateTimeUtil.now();
             
             // Get all active subscriptions
             List<Subscription> dueSubscriptions = subscriptionDAO.getAll().stream()

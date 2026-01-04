@@ -7,11 +7,6 @@ import lombok.Setter;
 
 import java.time.OffsetDateTime;
 
-/**
- * SmsBalance Entity - Represents data from external SMS provider database
- * Linked to Customer via external_customer_id (not FK - this is external data!)
- * This data is synced from external SMS provider API
- */
 @Entity
 @Getter
 @Setter

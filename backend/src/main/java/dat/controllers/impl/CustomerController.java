@@ -16,13 +16,18 @@ import dat.security.daos.ISecurityDAO;
 import dat.security.daos.SecurityDAO;
 import dat.security.entities.User;
 import dat.services.SerialLinkVerificationService;
+import dat.utils.DateTimeUtil;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
 public class CustomerController implements IController<CustomerDTO>{
+    private static final Logger logger = LoggerFactory.getLogger(CustomerController.class);
 
     private final CustomerDAO customerDAO;
     private final SmsBalanceDAO smsBalanceDAO;
@@ -46,8 +51,7 @@ public class CustomerController implements IController<CustomerDTO>{
             Optional<Customer> customerOpt = customerDAO.getById(customerId);
             
             if (customerOpt.isEmpty()) {
-                ctx.status(404);
-                ctx.json("{\"msg\": \"Customer not found\"}");
+                ErrorResponse.notFound(ctx, "Customer not found");
                 return;
             }
             
@@ -66,17 +70,15 @@ public class CustomerController implements IController<CustomerDTO>{
             ctx.json(dto);
             
         } catch (NumberFormatException e) {
-            ctx.status(400);
-            ctx.json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            ctx.status(500);
-            ctx.json("{\"msg\": \"Error fetching customer: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error fetching customer", logger, e);
         }
     }
 
     @Override
     public void readAll(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Customers are managed by admins only");
     }
 
     @Override
@@ -86,57 +88,49 @@ public class CustomerController implements IController<CustomerDTO>{
             CustomerDTO dto = ctx.bodyAsClass(CustomerDTO.class);
 
             if (dto.companyName == null || dto.companyName.isEmpty()) {
-                ctx.status(400);
-                ctx.json("Customer name cannot be empty");
+                ErrorResponse.badRequest(ctx, "Customer name cannot be empty");
                 return;
             }
 
             if (dto.email == null || dto.email.isEmpty()) {
-                ctx.status(400);
-                ctx.json("Customer email cannot be empty");
+                ErrorResponse.badRequest(ctx, "Customer email cannot be empty");
                 return;
             }
             if (dto.serialNumber == null) {
-                ctx.status(400);
-                ctx.json("Serial number cannot be empty");
+                ErrorResponse.badRequest(ctx, "Serial number cannot be empty");
                 return;
             }
 
             boolean isSerialValidAndEmail = serialLinkService.verifySerialNumberAndEmail(dto.serialNumber,dto.email);
             if (!isSerialValidAndEmail) {
-                ctx.status(403);
-                ctx.json("Invalid serial number is already used and Email: ");
+                ErrorResponse.forbidden(ctx, "Invalid serial number is already used and Email: ");
                 return;
             }
 
             // 4. Get the Plan for this serial number
             Plan plan = serialLinkService.getPlanForSerialNumber(dto.serialNumber);
             if (plan == null) {
-                ctx.status(500);
-                ctx.json("No plan found for serial number: " + dto.serialNumber);
+                ErrorResponse.internalError(ctx, "No plan found for serial number: " + dto.serialNumber);
                 return;
             }
 
             // 5. Get SerialLink to fetch external_customer_id
             dat.entities.SerialLink serialLink = serialLinkService.getSerialLink(dto.serialNumber);
             if (serialLink == null) {
-                ctx.status(500);
-                ctx.json("SerialLink not found for serial number: " + dto.serialNumber);
+                ErrorResponse.internalError(ctx, "SerialLink not found for serial number: " + dto.serialNumber);
                 return;
             }
 
             // 6. Get User
             User user = securityDAO.getUserByEmail(dto.email);
             if (user == null) {
-                ctx.status(400);
-                ctx.json("No user found with email: " + dto.email);
+                ErrorResponse.badRequest(ctx, "No user found with email: " + dto.email);
                 return;
             }
 
             // 7. Check if customer already exists
             if(customerDAO.getByUserEmail(dto.email).isPresent()){
-                ctx.status(409);
-                ctx.json("Customer already exists with email: " + dto.email);
+                ErrorResponse.conflict(ctx, "Customer already exists with email: " + dto.email);
                 return;
             }
 
@@ -146,7 +140,7 @@ public class CustomerController implements IController<CustomerDTO>{
                 dto.companyName, 
                 dto.serialNumber, 
                 serialLink.getExternalCustomerId(),
-                OffsetDateTime.now()
+                DateTimeUtil.now()
             );
             Customer savedCustomer = customerDAO.create(customer);
             
@@ -155,7 +149,7 @@ public class CustomerController implements IController<CustomerDTO>{
                 savedCustomer,
                 plan,
                 SubscriptionStatus.ACTIVE,  // Already subscribed in external system
-                OffsetDateTime.now(),
+                DateTimeUtil.now(),
                 serialLink.getNextPaymentDate(),  // From external system
                 AnchorPolicy.ANNIVERSARY
             );
@@ -182,19 +176,18 @@ public class CustomerController implements IController<CustomerDTO>{
             ctx.json(responseDto);
 
         } catch (Exception e) {
-            ctx.status(500);
-            ctx.json("Internal server error: " + e.getMessage());
+            ErrorResponse.internalError(ctx, "Internal server error", logger, e);
         }
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Customers are managed by admins only");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Customers are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Customers are managed by admins only");
     }
 
     /**
@@ -208,8 +201,7 @@ public class CustomerController implements IController<CustomerDTO>{
             // Get customer to find their external_customer_id
             Optional<Customer> customerOpt = customerDAO.getById(customerId);
             if (customerOpt.isEmpty()) {
-                ctx.status(404);
-                ctx.json("Customer not found");
+                ErrorResponse.notFound(ctx, "Customer not found");
                 return;
             }
             
@@ -230,15 +222,12 @@ public class CustomerController implements IController<CustomerDTO>{
                 ctx.status(200);
                 ctx.json(dto);
             } else {
-                ctx.status(404);
-                ctx.json("SMS balance not found for customer");
+                ErrorResponse.notFound(ctx, "SMS balance not found for customer");
             }
         } catch (NumberFormatException e) {
-            ctx.status(400);
-            ctx.json("Invalid customer ID format");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            ctx.status(500);
-            ctx.json("Error fetching SMS balance: " + e.getMessage());
+            ErrorResponse.internalError(ctx, "Error fetching SMS balance", logger, e);
         }
     }
 

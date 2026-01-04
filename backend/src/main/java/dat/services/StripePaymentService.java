@@ -24,10 +24,7 @@ public class StripePaymentService {
     private static final Logger logger = LoggerFactory.getLogger(StripePaymentService.class);
     private static boolean initialized = false;
 
-    /**
-     * Get singleton instance of StripePaymentService
-     * Automatically initializes Stripe API key on first access
-     */
+
     public static StripePaymentService getInstance() {
         if (instance == null) {
             instance = new StripePaymentService();

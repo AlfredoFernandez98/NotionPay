@@ -3,6 +3,7 @@ package dat.daos.impl;
 import dat.daos.IDAO;
 import dat.entities.Customer;
 import dat.security.entities.User;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
@@ -126,7 +127,7 @@ public class CustomerDAO implements IDAO<Customer> {
                 companyName, 
                 serialNumber, 
                 serialLink.getExternalCustomerId(),
-                OffsetDateTime.now()
+                DateTimeUtil.now()
             );
             
             em.persist(customer);

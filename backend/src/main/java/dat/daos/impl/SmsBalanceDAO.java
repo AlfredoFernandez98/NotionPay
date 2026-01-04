@@ -19,9 +19,7 @@ public class SmsBalanceDAO implements IDAO<SmsBalance> {
     private static SmsBalanceDAO instance;
     private static EntityManagerFactory emf;
 
-    /**
-     * Get singleton instance of SmsBalanceDAO
-     */
+  
     public static SmsBalanceDAO getInstance(EntityManagerFactory _emf) {
         if (instance == null) {
             emf = _emf;

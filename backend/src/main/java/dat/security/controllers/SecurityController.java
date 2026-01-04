@@ -25,6 +25,7 @@ import dat.security.entities.User;
 import dat.security.exceptions.ApiException;
 import dat.security.exceptions.ValidationException;
 import dat.services.SerialLinkVerificationService;
+import dat.utils.DateTimeUtil;
 import dat.utils.Utils;
 import dat.utils.ValidationUtil;
 import io.javalin.http.Handler;
@@ -90,7 +91,7 @@ public class SecurityController implements ISecurityController {
                       .orElseThrow(()-> new EntityNotFoundException("Customer with email " + verifiedUser.getEmail() + " not found"));
 
 
-                var expiresAt= java.time.OffsetDateTime.now().plusHours(2);
+                var expiresAt = DateTimeUtil.nowPlusHours(2);
 
                 String ip = ctx.req().getRemoteAddr();
                 String userAgent =  ctx.header("User-Agent");
@@ -180,7 +181,7 @@ public class SecurityController implements ISecurityController {
                     customer,
                     plan,
                     SubscriptionStatus.ACTIVE,
-                    java.time.OffsetDateTime.now(),
+                    DateTimeUtil.now(),
                     serialLink.getNextPaymentDate(),
                     AnchorPolicy.ANNIVERSARY
                 );
@@ -201,7 +202,7 @@ public class SecurityController implements ISecurityController {
                 String token = createToken(new UserDTO(user.getEmail(), Set.of("USER")));
                 
                 // Create Session for activity logging
-                java.time.OffsetDateTime expiresAt = java.time.OffsetDateTime.now().plusHours(24);
+                java.time.OffsetDateTime expiresAt = DateTimeUtil.nowPlusHours(24);
                 String ip = ctx.ip();
                 String userAgent = ctx.header("User-Agent");
                 if (userAgent == null) {
@@ -456,7 +457,7 @@ public class SecurityController implements ISecurityController {
                 }
 
                 // Step 6: Verify session has not expired (double-check with database)
-                if (java.time.OffsetDateTime.now().isAfter(session.get().getExpiresAt())) {
+                if (DateTimeUtil.now().isAfter(session.get().getExpiresAt())) {
                     ctx.status(401).json(returnObject.put("msg", "Session has expired"));
                     return;
                 }

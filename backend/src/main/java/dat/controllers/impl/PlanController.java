@@ -4,14 +4,18 @@ import dat.controllers.IController;
 import dat.daos.impl.PlanDAO;
 import dat.dtos.PlanDTO;
 import dat.entities.Plan;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PlanController implements IController<PlanDTO> {
+    private static final Logger logger = LoggerFactory.getLogger(PlanController.class);
     private final PlanDAO planDAO;
 
     public PlanController(EntityManagerFactory emf) {
@@ -33,16 +37,13 @@ public class PlanController implements IController<PlanDTO> {
                 ctx.status(200);
                 ctx.json(dto);
             } else {
-                ctx.status(404);
-                ctx.json("Plan not found");
+                ErrorResponse.notFound(ctx, "Plan not found");
             }
             
         } catch (NumberFormatException e) {
-            ctx.status(400);
-            ctx.json("Invalid plan ID format");
+            ErrorResponse.badRequest(ctx, "Invalid plan ID format");
         } catch (Exception e) {
-            ctx.status(500);
-            ctx.json("Error fetching plan: " + e.getMessage());
+            ErrorResponse.internalError(ctx, "Error fetching plan", logger, e);
         }
     }
 
@@ -61,27 +62,23 @@ public class PlanController implements IController<PlanDTO> {
             ctx.json(plansDTO);
             
         } catch (Exception e) {
-            ctx.status(500);
-            ctx.json("Error fetching plans: " + e.getMessage());
+            ErrorResponse.internalError(ctx, "Error fetching plans", logger, e);
         }
     }
 
     @Override
     public void create(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
-
+        ErrorResponse.notImplemented(ctx, "Plans are managed by admins only");
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
-
+        ErrorResponse.notImplemented(ctx, "Plans are managed by admins only");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Plans are managed by admins only\"}");
-
+        ErrorResponse.notImplemented(ctx, "Plans are managed by admins only");
     }
     /**
      * Helper: Convert Plan entity to PlanDTO

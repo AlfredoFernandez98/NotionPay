@@ -4,6 +4,7 @@ import dat.controllers.IController;
 import dat.daos.impl.ProductDAO;
 import dat.dtos.ProductDTO;
 import dat.entities.Product;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -37,14 +38,13 @@ public class ProductController implements IController<ProductDTO> {
                 ctx.status(200).json(dto);
                 logger.info("Retrieved product ID: {}", id);
             } else {
-                ctx.status(404).json("{\"msg\": \"Product not found with ID: " + id + "\"}");
+                ErrorResponse.notFound(ctx, "Product not found with ID: " + id);
             }
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid product ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid product ID format");
         } catch (Exception e) {
-            logger.error("Error fetching product: ", e);
-            ctx.status(500).json("{\"msg\": \"Error fetching product: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error fetching product", logger, e);
         }
     }
 
@@ -65,24 +65,23 @@ public class ProductController implements IController<ProductDTO> {
             logger.info("Retrieved {} products", productsDTO.size());
             
         } catch (Exception e) {
-            logger.error("Error fetching products: ", e);
-            ctx.status(500).json("{\"msg\": \"Error fetching products: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error fetching products", logger, e);
         }
     }
 
     @Override
     public void create(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Products are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Products are managed by admins only");
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Products are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Products are managed by admins only");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Products are managed by admins only\"}");
+        ErrorResponse.notImplemented(ctx, "Products are managed by admins only");
     }
 
     /**

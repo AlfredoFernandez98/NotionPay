@@ -44,7 +44,7 @@ public class ActivityLogController implements IController<ActivityLogDTO> {
 
     @Override
     public void readAll(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Use customer-specific endpoint: GET /api/customers/{id}/activities\"}");
+        ErrorResponse.notImplemented(ctx, "Use customer-specific endpoint: GET /api/customers/{id}/activities");
     }
 
     /**
@@ -76,17 +76,17 @@ public class ActivityLogController implements IController<ActivityLogDTO> {
 
     @Override
     public void create(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Activity logs are created automatically by the system\"}");
+        ErrorResponse.notImplemented(ctx, "Activity logs are created automatically by the system");
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Activity logs cannot be updated\"}");
+        ErrorResponse.notImplemented(ctx, "Activity logs cannot be updated");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Activity logs cannot be deleted\"}");
+        ErrorResponse.notImplemented(ctx, "Activity logs cannot be deleted");
     }
 
     private ActivityLogDTO convertToDTO(ActivityLog activityLog) {

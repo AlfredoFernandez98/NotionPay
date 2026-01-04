@@ -16,6 +16,8 @@ import dat.enums.PaymentStatus;
 import dat.enums.ReceiptStatus;
 import dat.services.StripePaymentService;
 import dat.services.SubscriptionService;
+import dat.utils.DateTimeUtil;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -132,12 +134,11 @@ public class PaymentController implements IController<PaymentDTO> {
 
         } catch (StripeException e) {
             logger.error("Stripe error: {}", e.getMessage());
-            ctx.status(400).json("{\"msg\": \"" + stripeService.getErrorMessage(e) + "\"}");
+            ErrorResponse.badRequest(ctx, stripeService.getErrorMessage(e));
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error adding payment method", e);
-            ctx.status(500).json("{\"msg\": \"Failed to add payment method: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to add payment method", logger, e);
         }
     }
 
@@ -339,12 +340,11 @@ public class PaymentController implements IController<PaymentDTO> {
 
         } catch (StripeException e) {
             logger.error("Stripe payment error: {}", e.getMessage());
-            ctx.status(400).json("{\"msg\": \"" + stripeService.getErrorMessage(e) + "\"}");
+            ErrorResponse.badRequest(ctx, stripeService.getErrorMessage(e));
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error processing payment", e);
-            ctx.status(500).json("{\"msg\": \"Payment failed: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Payment failed", logger, e);
         }
     }
 
@@ -364,12 +364,11 @@ public class PaymentController implements IController<PaymentDTO> {
             logger.info("Retrieved payment ID: {}", id);
 
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid payment ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid payment ID format");
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error retrieving payment", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving payment: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving payment", logger, e);
         }
     }
 
@@ -390,10 +389,9 @@ public class PaymentController implements IController<PaymentDTO> {
             logger.info("Retrieved {} payments for customer ID: {}", dtos.size(), customerId);
 
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving customer payments", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving payments: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving payments", logger, e);
         }
     }
 
@@ -411,12 +409,11 @@ public class PaymentController implements IController<PaymentDTO> {
             logger.info("Retrieved receipt for payment ID: {}", paymentId);
 
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid payment ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid payment ID format");
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error retrieving receipt", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving receipt: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving receipt", logger, e);
         }
     }
 
@@ -469,7 +466,7 @@ public class PaymentController implements IController<PaymentDTO> {
                 payment,
                 receiptNumber,
                 payment.getPriceCents(),
-                OffsetDateTime.now(),
+                DateTimeUtil.now(),
                 ReceiptStatus.PAID,
                 receiptUrl,
                 payment.getCustomer().getUser().getEmail(),
@@ -517,7 +514,7 @@ public class PaymentController implements IController<PaymentDTO> {
 
     @Override
     public void readAll(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Use customer-specific endpoint: GET /api/customers/{id}/payments\"}");
+        ErrorResponse.notImplemented(ctx, "Use customer-specific endpoint: GET /api/customers/{id}/payments");
     }
 
     /**
@@ -558,23 +555,22 @@ public class PaymentController implements IController<PaymentDTO> {
             logger.info("Retrieved {} payment methods for customer ID: {}", dtos.size(), customerId);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (IllegalArgumentException e) {
-            ctx.status(404).json("{\"msg\": \"" + e.getMessage() + "\"}");
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.error("Error retrieving payment methods", e);
-            ctx.status(500).json("{\"msg\": \"Error retrieving payment methods: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Error retrieving payment methods", logger, e);
         }
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Payments cannot be updated once created\"}");
+        ErrorResponse.notImplemented(ctx, "Payments cannot be updated once created");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Payments cannot be deleted\"}");
+        ErrorResponse.notImplemented(ctx, "Payments cannot be deleted");
     }
 }
 

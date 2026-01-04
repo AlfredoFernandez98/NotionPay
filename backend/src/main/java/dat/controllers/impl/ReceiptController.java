@@ -4,6 +4,7 @@ import dat.controllers.IController;
 import dat.daos.impl.ReceiptDAO;
 import dat.dtos.ReceiptDTO;
 import dat.entities.Receipt;
+import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
@@ -38,7 +39,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
             Optional<Receipt> receipt = receiptDAO.getById(id);
             
             if (receipt.isEmpty()) {
-                ctx.status(404).json("{\"msg\": \"Receipt not found with ID: " + id + "\"}");
+                ErrorResponse.notFound(ctx, "Receipt not found with ID: " + id);
                 return;
             }
             
@@ -47,10 +48,9 @@ public class ReceiptController implements IController<ReceiptDTO> {
             logger.info("Retrieved receipt ID: {}", id);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid receipt ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid receipt ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving receipt: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to retrieve receipt: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to retrieve receipt", logger, e);
         }
     }
 
@@ -73,10 +73,9 @@ public class ReceiptController implements IController<ReceiptDTO> {
             logger.info("Retrieved {} receipts for customer ID: {}", dtos.size(), customerId);
             
         } catch (NumberFormatException e) {
-            ctx.status(400).json("{\"msg\": \"Invalid customer ID format\"}");
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
         } catch (Exception e) {
-            logger.error("Error retrieving customer receipts: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to retrieve receipts: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to retrieve receipts", logger, e);
         }
     }
 
@@ -90,7 +89,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
             Optional<Receipt> receipt = receiptDAO.getByReceiptNumber(receiptNumber);
             
             if (receipt.isEmpty()) {
-                ctx.status(404).json("{\"msg\": \"Receipt not found with number: " + receiptNumber + "\"}");
+                ErrorResponse.notFound(ctx, "Receipt not found with number: " + receiptNumber);
                 return;
             }
             
@@ -99,8 +98,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
             logger.info("Retrieved receipt by number: {}", receiptNumber);
             
         } catch (Exception e) {
-            logger.error("Error retrieving receipt by number: ", e);
-            ctx.status(500).json("{\"msg\": \"Failed to retrieve receipt: " + e.getMessage() + "\"}");
+            ErrorResponse.internalError(ctx, "Failed to retrieve receipt", logger, e);
         }
     }
 
@@ -130,21 +128,21 @@ public class ReceiptController implements IController<ReceiptDTO> {
 
     @Override
     public void readAll(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Use customer-specific endpoint: GET /api/customers/{id}/receipts\"}");
+        ErrorResponse.notImplemented(ctx, "Use customer-specific endpoint: GET /api/customers/{id}/receipts");
     }
 
     @Override
     public void create(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Receipts are created automatically with payments\"}");
+        ErrorResponse.notImplemented(ctx, "Receipts are created automatically with payments");
     }
 
     @Override
     public void update(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Receipts cannot be updated once created\"}");
+        ErrorResponse.notImplemented(ctx, "Receipts cannot be updated once created");
     }
 
     @Override
     public void delete(Context ctx) {
-        ctx.status(501).json("{\"msg\": \"Receipts cannot be deleted\"}");
+        ErrorResponse.notImplemented(ctx, "Receipts cannot be deleted");
     }
 }

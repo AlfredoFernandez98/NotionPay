@@ -2,6 +2,7 @@ package dat.entities;
 
 import dat.enums.Currency;
 import dat.enums.PaymentStatus;
+import dat.utils.DateTimeUtil;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,7 +64,7 @@ public class Payment {
         this.priceCents = priceCents;
         this.currency = currency;
         this.processorIntentId = processorIntentId;
-        this.createdAt = OffsetDateTime.now();
+        this.createdAt = DateTimeUtil.now();
     }
 }
 
