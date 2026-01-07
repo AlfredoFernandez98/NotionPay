@@ -14,6 +14,7 @@ import dat.enums.ActivityLogType;
 import dat.enums.Currency;
 import dat.enums.PaymentStatus;
 import dat.enums.ReceiptStatus;
+import dat.services.PaymentService;
 import dat.services.StripePaymentService;
 import dat.services.SubscriptionService;
 import dat.utils.DateTimeUtil;
@@ -46,6 +47,7 @@ public class PaymentController implements IController<PaymentDTO> {
     private final SmsBalanceDAO smsBalanceDAO;
     private final StripePaymentService stripeService;
     private final SubscriptionService subscriptionService;
+    private final PaymentService paymentService; 
 
     public PaymentController(EntityManagerFactory emf) {
         this.paymentDAO = PaymentDAO.getInstance(emf);
@@ -59,6 +61,7 @@ public class PaymentController implements IController<PaymentDTO> {
         this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
         this.stripeService = StripePaymentService.getInstance();
         this.subscriptionService = SubscriptionService.getInstance(emf);
+        this.paymentService = PaymentService.getInstance(emf); 
     }
 
     /**
@@ -143,204 +146,75 @@ public class PaymentController implements IController<PaymentDTO> {
     }
 
     /**
-     * Process payment (charge card)
+     * Process payment (charge card) with ACID guarantees
      * POST /api/payments
      * Body: { customerId, paymentMethodId (Long or String), amount, currency, description, subscriptionId?, productId? }
      * 
      * Supports two modes:
      * 1. paymentMethodId as Long: Uses saved payment method from database
      * 2. paymentMethodId as String (starts with "pm_"): Uses Stripe payment method ID directly (Stripe Elements)
+     * 
+     * ACID Implementation:
+     * - All database operations happen in a single transaction via PaymentService
+     * - If any step fails, all changes are rolled back automatically
+     * - Ensures data consistency across Payment, Receipt, SMS Balance, Subscription, and Activity Logs
      */
     @Override
     public void create(Context ctx) {
         try {
-                // Parse request
-                ObjectNode request = ctx.bodyAsClass(ObjectNode.class);
-                Long customerId = request.get("customerId").asLong();
-                String paymentMethodIdStr = request.get("paymentMethodId").asText();
-                Integer amountCents = request.get("amount").asInt();
-                String currencyStr = request.get("currency").asText();
-                String description = request.has("description") ? request.get("description").asText() : null;
-                Long subscriptionId = request.has("subscriptionId") ? request.get("subscriptionId").asLong() : null;
-                Long productId = request.has("productId") ? request.get("productId").asLong() : null;
+            // Parse request
+            ObjectNode request = ctx.bodyAsClass(ObjectNode.class);
+            Long customerId = request.get("customerId").asLong();
+            String paymentMethodIdStr = request.get("paymentMethodId").asText();
+            Integer amountCents = request.get("amount").asInt();
+            String currencyStr = request.get("currency").asText();
+            String description = request.has("description") ? request.get("description").asText() : null;
+            Long subscriptionId = request.has("subscriptionId") ? request.get("subscriptionId").asLong() : null;
+            Long productId = request.has("productId") ? request.get("productId").asLong() : null;
 
-                logger.info("Processing payment for customer: {}, amount: {} {}", customerId, amountCents, currencyStr);
+            logger.info("Processing ACID payment for customer: {}, amount: {} {}", customerId, amountCents, currencyStr);
 
-                // Get customer
-                Customer customer = customerDAO.getById(customerId)
-                        .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
+            // Get session for activity logging
+            Session session = getSessionFromContext(ctx);
 
-                // Determine if this is a Stripe payment method ID (starts with "pm_") or database ID
-                boolean isStripePaymentMethodId = paymentMethodIdStr.startsWith("pm_");
-                String stripePaymentMethodId;
-                dat.entities.PaymentMethod savedPaymentMethod = null;
+            // Build payment request
+            PaymentService.PaymentRequest paymentRequest = new PaymentService.PaymentRequest(
+                customerId,
+                paymentMethodIdStr,
+                amountCents,
+                currencyStr,
+                description,
+                subscriptionId,
+                productId,
+                session
+            );
 
-                if (isStripePaymentMethodId) {
-                    // Direct Stripe payment method ID from Stripe Elements
-                    stripePaymentMethodId = paymentMethodIdStr;
-                    logger.info("Using Stripe payment method ID directly: {}", stripePaymentMethodId);
-                } else {
-                    // Database payment method ID - look it up
-                    Long paymentMethodId = Long.parseLong(paymentMethodIdStr);
-                    savedPaymentMethod = paymentMethodDAO.getById(paymentMethodId)
-                            .orElseThrow(() -> new IllegalArgumentException("Payment method not found"));
-                    stripePaymentMethodId = savedPaymentMethod.getProcessorMethodId();
-                    logger.info("Using saved payment method: {}", paymentMethodId);
-                }
+            // Process payment with ACID guarantees (single transaction)
+            PaymentService.PaymentResult result = paymentService.processPayment(paymentRequest);
 
-                // Get optional entities
-                Subscription subscription = subscriptionId != null ? 
-                        subscriptionDAO.getById(subscriptionId).orElse(null) : null;
-                
-                Product product = productId != null ? 
-                        productDAO.getById(productId).orElse(null) : null;
+            // Build response
+            ObjectNode response = objectMapper.createObjectNode()
+                    .put("msg", result.message)
+                    .put("paymentId", result.payment.getId())
+                    .put("status", result.payment.getStatus().toString())
+                    .put("amount", result.payment.getPriceCents())
+                    .put("currency", result.payment.getCurrency().toString())
+                    .put("receiptId", result.receipt.getId())
+                    .put("receiptNumber", result.receipt.getReceiptNumber());
+            
+            // Include next billing date if subscription payment
+            if (result.subscription != null) {
+                response.put("subscriptionId", result.subscription.getId());
+                response.put("nextBillingDate", result.subscription.getNextBillingDate() != null ? 
+                    result.subscription.getNextBillingDate().toString() : null);
+            }
+            
+            ctx.status(201).json(response);
+            logger.info("ACID payment completed successfully: Payment ID {}", result.payment.getId());
 
-                // Create payment in Stripe
-                Map<String, String> metadata = new HashMap<>();
-                metadata.put("customer_id", customerId.toString());
-                metadata.put("one_time_payment", String.valueOf(isStripePaymentMethodId));
-                if (subscriptionId != null) metadata.put("subscription_id", subscriptionId.toString());
-                if (productId != null) metadata.put("product_id", productId.toString());
-
-                PaymentIntent paymentIntent = stripeService.createPaymentIntent(
-                        amountCents.longValue(),
-                        currencyStr,
-                        stripePaymentMethodId,
-                        description,
-                        metadata
-                );
-
-                // Determine payment status
-                PaymentStatus status = stripeService.isPaymentSuccessful(paymentIntent) ? 
-                        PaymentStatus.COMPLETED : PaymentStatus.PENDING;
-
-                // Save payment to database (savedPaymentMethod may be null for one-time payments)
-                Payment payment = new Payment(
-                        customer,
-                        savedPaymentMethod,  // null for one-time Stripe Elements payments
-                        subscription,
-                        product,
-                        status,
-                        amountCents,
-                        Currency.valueOf(currencyStr.toUpperCase()),
-                        paymentIntent.getId()
-                );
-                paymentDAO.create(payment);
-
-                // Get session once for all activity logging
-                Session session = getSessionFromContext(ctx);
-
-                // Generate receipt if payment successful
-                Receipt receipt = null;
-                if (status == PaymentStatus.COMPLETED) {
-                    receipt = generateReceipt(payment, paymentIntent);
-                    receiptDAO.create(receipt);
-                    logger.info("Receipt generated: {}", receipt.getReceiptNumber());
-                    
-                    // Update SMS balance if this was an SMS product purchase
-                    if (product != null && product.getSmsCount() != null) {
-                        String externalCustomerId = customer.getExternalCustomerId();
-                        int smsCredits = product.getSmsCount();
-                        smsBalanceDAO.rechargeSmsCredits(externalCustomerId, smsCredits);
-                        logger.info("SMS balance updated: added {} credits to customer {}", 
-                            smsCredits, externalCustomerId);
-                        
-                        // Log SMS purchase activity
-                        if (session != null) {
-                            Map<String, Object> smsMetadata = new HashMap<>();
-                            smsMetadata.put("productId", product.getId());
-                            smsMetadata.put("productName", product.getName());
-                            smsMetadata.put("smsCreditsAdded", smsCredits);
-                            smsMetadata.put("paymentId", payment.getId());
-                            smsMetadata.put("oneTimePayment", isStripePaymentMethodId);
-                            
-                            ActivityLog smsLog = new ActivityLog(
-                                customer,
-                                session,
-                                ActivityLogType.SMS_PURCHASE,
-                                ActivityLogStatus.SUCCESS,
-                                smsMetadata
-                            );
-                            activityLogDAO.create(smsLog);
-                        }
-                    }
-                }
-
-                // Update subscription after successful payment
-                if (subscription != null && status == PaymentStatus.COMPLETED) {
-                    subscriptionService.updateSubscriptionAfterPayment(subscription, payment);
-                    logger.info("Subscription {} updated with new billing date: {}", 
-                        subscription.getId(), subscription.getNextBillingDate());
-                }
-
-                // Log payment activity
-                if (session != null) {
-                    Map<String, Object> paymentMetadata = new HashMap<>();
-                    paymentMetadata.put("paymentId", payment.getId());
-                    paymentMetadata.put("amount", amountCents);
-                    paymentMetadata.put("currency", currencyStr);
-                    paymentMetadata.put("status", status.toString());
-                    paymentMetadata.put("oneTimePayment", isStripePaymentMethodId);
-                    if (subscription != null) {
-                        paymentMetadata.put("subscriptionId", subscription.getId());
-                    }
-                    if (product != null) {
-                        paymentMetadata.put("productId", product.getId());
-                    }
-                    
-                    ActivityLog activityLog = new ActivityLog(
-                        customer,
-                        session,
-                        ActivityLogType.PAYMENT,
-                        status == PaymentStatus.COMPLETED ? ActivityLogStatus.SUCCESS : ActivityLogStatus.FAILURE,
-                        paymentMetadata
-                    );
-                    activityLogDAO.create(activityLog);
-                    
-                    // Log subscription renewal if this was a subscription payment
-                    if (subscription != null && status == PaymentStatus.COMPLETED) {
-                        Map<String, Object> renewalMetadata = new HashMap<>();
-                        renewalMetadata.put("subscriptionId", subscription.getId());
-                        renewalMetadata.put("planId", subscription.getPlan().getId());
-                        renewalMetadata.put("planName", subscription.getPlan().getName());
-                        renewalMetadata.put("previousBillingDate", subscription.getNextBillingDate().minusMonths(1).toString());
-                        renewalMetadata.put("nextBillingDate", subscription.getNextBillingDate().toString());
-                        renewalMetadata.put("paymentId", payment.getId());
-                        
-                        ActivityLog renewalLog = new ActivityLog(
-                            customer,
-                            session,
-                            ActivityLogType.SUBSCRIPTION_RENEWED,
-                            ActivityLogStatus.SUCCESS,
-                            renewalMetadata
-                        );
-                        activityLogDAO.create(renewalLog);
-                    }
-                }
-
-                logger.info("Payment created: {} with status: {}", payment.getId(), status);
-
-                ObjectNode response = objectMapper.createObjectNode()
-                        .put("msg", "Payment processed successfully")
-                        .put("paymentId", payment.getId())
-                        .put("status", status.toString())
-                        .put("amount", amountCents)
-                        .put("currency", currencyStr)
-                        .put("receiptId", receipt != null ? receipt.getId() : null)
-                        .put("receiptNumber", receipt != null ? receipt.getReceiptNumber() : null);
-                
-                // Include next billing date if subscription payment
-                if (subscription != null) {
-                    response.put("subscriptionId", subscription.getId());
-                    response.put("nextBillingDate", subscription.getNextBillingDate() != null ? 
-                        subscription.getNextBillingDate().toString() : null);
-                }
-                
-                ctx.status(201).json(response);
-
-        } catch (StripeException e) {
-            logger.error("Stripe payment error: {}", e.getMessage());
-            ErrorResponse.badRequest(ctx, stripeService.getErrorMessage(e));
+        } catch (PaymentService.PaymentProcessingException e) {
+            logger.error("Payment processing failed: {}", e.getMessage());
+            ErrorResponse.badRequest(ctx, e.getMessage());
         } catch (IllegalArgumentException e) {
             ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
