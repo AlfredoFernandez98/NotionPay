@@ -1,38 +1,35 @@
 package dat.controllers.impl;
 
 import dat.controllers.IController;
-import dat.daos.impl.ActivityLogDAO;
-import dat.daos.impl.SessionDAO;
-import dat.daos.impl.SubscriptionDAO;
 import dat.dtos.SubscriptionDTO;
-import dat.entities.ActivityLog;
 import dat.entities.Session;
 import dat.entities.Subscription;
-import dat.enums.ActivityLogStatus;
-import dat.enums.ActivityLogType;
-import dat.enums.SubscriptionStatus;
-import dat.utils.DateTimeUtil;
+import dat.services.SessionService;
+import dat.services.SubscriptionService;
 import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Controller for Subscription endpoints
+ * 
+ * ARCHITECTURE: This controller ONLY uses Services (no DAOs)
+ * All business logic is delegated to the Service layer
+ */
 public class SubscriptionController implements IController<SubscriptionDTO> {
     
-    private final SubscriptionDAO subscriptionDAO;
-    private final ActivityLogDAO activityLogDAO;
-    private final SessionDAO sessionDAO;
+    // ✅ ONLY Services (no DAOs)
+    private final SubscriptionService subscriptionService;
+    private final SessionService sessionService;
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionController.class);
     
     public SubscriptionController(EntityManagerFactory emf) {
-        this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
-        this.activityLogDAO = ActivityLogDAO.getInstance(emf);
-        this.sessionDAO = SessionDAO.getInstance(emf);
+        this.subscriptionService = SubscriptionService.getInstance(emf);
+        this.sessionService = SessionService.getInstance(emf);
     }
 
     /**
@@ -43,7 +40,7 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
     public void read(Context ctx) {
         try {
             Long id = Long.parseLong(ctx.pathParam("id"));
-            Optional<Subscription> subscription = subscriptionDAO.getById(id);
+            Optional<Subscription> subscription = subscriptionService.getById(id);
             
             if (subscription.isEmpty()) {
                 ErrorResponse.notFound(ctx, "Subscription not found with ID: " + id);
@@ -68,7 +65,7 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
     public void getCustomerSubscription(Context ctx) {
         try {
             Long customerId = Long.parseLong(ctx.pathParam("customerId"));
-            Optional<Subscription> subscription = subscriptionDAO.getActiveSubscriptionForCustomer(customerId);
+            Optional<Subscription> subscription = subscriptionService.getActiveSubscriptionForCustomer(customerId);
             
             if (subscription.isEmpty()) {
                 ErrorResponse.notFound(ctx, "No active subscription found for customer ID: " + customerId);
@@ -93,36 +90,12 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
     public void cancel(Context ctx) {
         try {
             Long id = Long.parseLong(ctx.pathParam("id"));
-            Optional<Subscription> subscriptionOpt = subscriptionDAO.getById(id);
             
-            if (subscriptionOpt.isEmpty()) {
-                ErrorResponse.notFound(ctx, "Subscription not found with ID: " + id);
-                return;
-            }
-            
-            Subscription subscription = subscriptionOpt.get();
-            subscription.setStatus(SubscriptionStatus.CANCELED);
-            subscription.setEndDate(DateTimeUtil.now());
-            subscriptionDAO.update(subscription);
-            
-            // Log activity
+            // Get session for activity logging
             Session session = getSessionFromContext(ctx);
-            if (session != null) {
-                Map<String, Object> metadata = new HashMap<>();
-                metadata.put("subscriptionId", subscription.getId());
-                metadata.put("planId", subscription.getPlan().getId());
-                metadata.put("planName", subscription.getPlan().getName());
-                metadata.put("canceledAt", subscription.getEndDate().toString());
-                
-                ActivityLog activityLog = new ActivityLog(
-                    subscription.getCustomer(),
-                    session,
-                    ActivityLogType.SUBSCRIPTION_CANCELLED,
-                    ActivityLogStatus.SUCCESS,
-                    metadata
-                );
-                activityLogDAO.create(activityLog);
-            }
+            
+            // Delegate to service
+            Subscription subscription = subscriptionService.cancelSubscription(id, session);
             
             SubscriptionDTO dto = convertToDto(subscription);
             ctx.status(200).json(dto);
@@ -130,6 +103,8 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
             
         } catch (NumberFormatException e) {
             ErrorResponse.badRequest(ctx, "Invalid subscription ID format");
+        } catch (SubscriptionService.SubscriptionServiceException e) {
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
             ErrorResponse.internalError(ctx, "Failed to cancel subscription", logger, e);
         }
@@ -178,14 +153,11 @@ public class SubscriptionController implements IController<SubscriptionDTO> {
      */
     private Session getSessionFromContext(Context ctx) {
         try {
-            String token = ctx.header("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-                return sessionDAO.findByToken(token).orElse(null);
-            }
+            String authHeader = ctx.header("Authorization");
+            return sessionService.getFromAuthHeader(authHeader).orElse(null);
         } catch (Exception e) {
             logger.warn("Could not retrieve session from context: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 }

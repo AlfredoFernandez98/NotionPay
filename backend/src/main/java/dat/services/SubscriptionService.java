@@ -1,8 +1,13 @@
 package dat.services;
 
+import dat.daos.impl.ActivityLogDAO;
 import dat.daos.impl.SubscriptionDAO;
+import dat.entities.ActivityLog;
 import dat.entities.Payment;
+import dat.entities.Session;
 import dat.entities.Subscription;
+import dat.enums.ActivityLogStatus;
+import dat.enums.ActivityLogType;
 import dat.enums.Period;
 import dat.enums.SubscriptionStatus;
 import dat.utils.DateTimeUtil;
@@ -12,7 +17,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.TemporalAdjusters;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +34,7 @@ public class SubscriptionService {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionService.class);
     
     private final SubscriptionDAO subscriptionDAO;
+    private final ActivityLogDAO activityLogDAO;
 
 
     public static SubscriptionService getInstance(EntityManagerFactory emf) {
@@ -37,6 +46,7 @@ public class SubscriptionService {
 
     private SubscriptionService(EntityManagerFactory emf) {
         this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
+        this.activityLogDAO = ActivityLogDAO.getInstance(emf);
         logger.info("SubscriptionService initialized");
     }
 
@@ -157,7 +167,7 @@ public class SubscriptionService {
                 
         } catch (Exception e) {
             logger.error("Failed to update subscription {} after payment", subscription.getId(), e);
-            throw new RuntimeException("Failed to update subscription after payment", e);
+            throw new IllegalStateException("Failed to update subscription after payment", e);
         }
     }
 
@@ -186,7 +196,7 @@ public class SubscriptionService {
             
         } catch (Exception e) {
             logger.error("Failed to fetch subscriptions due for billing", e);
-            throw new RuntimeException("Failed to fetch subscriptions due for billing", e);
+            throw new IllegalStateException("Failed to fetch subscriptions due for billing", e);
         }
     }
 
@@ -195,20 +205,90 @@ public class SubscriptionService {
      * 
      * @param subscriptionId The subscription ID
      * @return The subscription if found
+     * @throws SubscriptionServiceException if subscription not found
      */
-    public Subscription getSubscriptionById(Long subscriptionId) {
+    public Subscription getSubscriptionById(Long subscriptionId) throws SubscriptionServiceException {
         return subscriptionDAO.getById(subscriptionId)
-            .orElseThrow(() -> new IllegalArgumentException("Subscription not found: " + subscriptionId));
+            .orElseThrow(() -> new SubscriptionServiceException("Subscription not found: " + subscriptionId));
     }
 
     /**
      * Get active subscription for a customer
      * 
      * @param customerId The customer ID
-     * @return The active subscription if found
+     * @return Optional containing the active subscription if found
      */
-    public Subscription getActiveSubscriptionForCustomer(Long customerId) {
-        return subscriptionDAO.getActiveSubscriptionForCustomer(customerId)
-            .orElseThrow(() -> new IllegalArgumentException("No active subscription found for customer: " + customerId));
+    public Optional<Subscription> getActiveSubscriptionForCustomer(Long customerId) {
+        return subscriptionDAO.getActiveSubscriptionForCustomer(customerId);
+    }
+
+    /**
+     * Get subscription by ID
+     * 
+     * @param id The subscription ID
+     * @return Optional containing the subscription if found
+     */
+    public Optional<Subscription> getById(Long id) {
+        return subscriptionDAO.getById(id);
+    }
+
+    /**
+     * Cancel a subscription
+     * 
+     * @param subscriptionId The subscription ID to cancel
+     * @param session Optional session for activity logging
+     * @return The canceled subscription
+     * @throws SubscriptionServiceException if cancellation fails
+     */
+    public Subscription cancelSubscription(Long subscriptionId, Session session) 
+            throws SubscriptionServiceException {
+        logger.info("Canceling subscription: {}", subscriptionId);
+        
+        try {
+            Subscription subscription = subscriptionDAO.getById(subscriptionId)
+                    .orElseThrow(() -> new SubscriptionServiceException("Subscription not found: " + subscriptionId));
+            
+            subscription.setStatus(SubscriptionStatus.CANCELED);
+            subscription.setEndDate(DateTimeUtil.now());
+            subscriptionDAO.update(subscription);
+            
+            // Log activity
+            if (session != null) {
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("subscriptionId", subscription.getId());
+                metadata.put("planId", subscription.getPlan().getId());
+                metadata.put("planName", subscription.getPlan().getName());
+                metadata.put("canceledAt", subscription.getEndDate().toString());
+                
+                ActivityLog activityLog = new ActivityLog(
+                    subscription.getCustomer(),
+                    session,
+                    ActivityLogType.SUBSCRIPTION_CANCELLED,
+                    ActivityLogStatus.SUCCESS,
+                    metadata
+                );
+                activityLogDAO.create(activityLog);
+            }
+            
+            logger.info("Subscription canceled successfully: {}", subscriptionId);
+            return subscription;
+            
+        } catch (Exception e) {
+            logger.error("Error canceling subscription", e);
+            throw new SubscriptionServiceException("Failed to cancel subscription: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Custom exception for subscription service operations
+     */
+    public static class SubscriptionServiceException extends Exception {
+        public SubscriptionServiceException(String message) {
+            super(message);
+        }
+
+        public SubscriptionServiceException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

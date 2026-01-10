@@ -1,9 +1,9 @@
 package dat.controllers.impl;
 
 import dat.controllers.IController;
-import dat.daos.impl.ProductDAO;
 import dat.dtos.ProductDTO;
 import dat.entities.Product;
+import dat.services.ProductService;
 import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
@@ -14,13 +14,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Controller for Product endpoints
+ * 
+ * ARCHITECTURE: This controller ONLY uses Services (no DAOs)
+ * All business logic is delegated to the Service layer
+ */
 public class ProductController implements IController<ProductDTO> {
     
-    private final ProductDAO productDAO;
+    // ✅ ONLY Services (no DAOs)
+    private final ProductService productService;
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
     
     public ProductController(EntityManagerFactory emf) {
-        this.productDAO = ProductDAO.getInstance(emf);
+        this.productService = ProductService.getInstance(emf);
     }
 
     /**
@@ -31,7 +38,7 @@ public class ProductController implements IController<ProductDTO> {
     public void read(Context ctx) {
         try {
             Long id = Long.parseLong(ctx.pathParam("id"));
-            Optional<Product> productOpt = productDAO.getById(id);
+            Optional<Product> productOpt = productService.getById(id);
             
             if (productOpt.isPresent()) {
                 ProductDTO dto = convertToDto(productOpt.get());
@@ -55,7 +62,7 @@ public class ProductController implements IController<ProductDTO> {
     @Override
     public void readAll(Context ctx) {
         try {
-            Set<Product> products = productDAO.getAll();
+            Set<Product> products = productService.getAll();
             
             Set<ProductDTO> productsDTO = products.stream()
                     .map(this::convertToDto)

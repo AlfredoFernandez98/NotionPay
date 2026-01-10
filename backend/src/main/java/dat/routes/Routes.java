@@ -4,7 +4,6 @@ package dat.routes;
 import dat.config.HibernateConfig;
 import dat.controllers.impl.*;
 import dat.security.enums.Role;
-import dat.services.SerialLinkVerificationService;
 import io.javalin.apibuilder.EndpointGroup;
 import jakarta.persistence.EntityManagerFactory;
 
@@ -13,7 +12,7 @@ import static io.javalin.apibuilder.ApiBuilder.*;
 public class Routes {
 
     private static final EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory();
-    private static final CustomerController customerController = new CustomerController(emf, SerialLinkVerificationService.getInstance(emf));
+    private static final CustomerController customerController = new CustomerController(emf);
     private static final PlanController planController = new PlanController(emf);
     private static final SubscriptionController subscriptionController = new SubscriptionController(emf);
     private static final ProductController productController = new ProductController(emf);

@@ -1,9 +1,9 @@
 package dat.controllers.impl;
 
 import dat.controllers.IController;
-import dat.daos.impl.ReceiptDAO;
 import dat.dtos.ReceiptDTO;
 import dat.entities.Receipt;
+import dat.services.ReceiptService;
 import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
@@ -18,14 +18,18 @@ import java.util.stream.Collectors;
 /**
  * Controller for Receipt endpoints
  * Handles receipt retrieval and filtering
+ * 
+ * ARCHITECTURE: This controller ONLY uses Services (no DAOs)
+ * All business logic is delegated to the Service layer
  */
 public class ReceiptController implements IController<ReceiptDTO> {
     private static final Logger logger = LoggerFactory.getLogger(ReceiptController.class);
     
-    private final ReceiptDAO receiptDAO;
+    // ✅ ONLY Services (no DAOs)
+    private final ReceiptService receiptService;
 
     public ReceiptController(EntityManagerFactory emf) {
-        this.receiptDAO = ReceiptDAO.getInstance(emf);
+        this.receiptService = ReceiptService.getInstance(emf);
     }
 
     /**
@@ -36,7 +40,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
     public void read(Context ctx) {
         try {
             Long id = Long.parseLong(ctx.pathParam("id"));
-            Optional<Receipt> receipt = receiptDAO.getById(id);
+            Optional<Receipt> receipt = receiptService.getById(id);
             
             if (receipt.isEmpty()) {
                 ErrorResponse.notFound(ctx, "Receipt not found with ID: " + id);
@@ -61,7 +65,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
     public void getCustomerReceipts(Context ctx) {
         try {
             Long customerId = Long.parseLong(ctx.pathParam("customerId"));
-            Set<Receipt> receipts = receiptDAO.getByCustomerId(customerId);
+            Set<Receipt> receipts = receiptService.getByCustomerId(customerId);
             
             // Convert to DTOs
             List<ReceiptDTO> dtos = receipts.stream()
@@ -86,7 +90,7 @@ public class ReceiptController implements IController<ReceiptDTO> {
     public void getByReceiptNumber(Context ctx) {
         try {
             String receiptNumber = ctx.pathParam("receiptNumber");
-            Optional<Receipt> receipt = receiptDAO.getByReceiptNumber(receiptNumber);
+            Optional<Receipt> receipt = receiptService.getByReceiptNumber(receiptNumber);
             
             if (receipt.isEmpty()) {
                 ErrorResponse.notFound(ctx, "Receipt not found with number: " + receiptNumber);

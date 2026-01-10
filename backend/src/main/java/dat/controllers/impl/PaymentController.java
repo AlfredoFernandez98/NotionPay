@@ -2,66 +2,47 @@ package dat.controllers.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.stripe.exception.StripeException;
-import com.stripe.model.PaymentIntent;
-import com.stripe.model.PaymentMethod;
 import dat.controllers.IController;
-import dat.daos.impl.*;
 import dat.dtos.PaymentDTO;
-import dat.entities.*;
-import dat.enums.ActivityLogStatus;
-import dat.enums.ActivityLogType;
-import dat.enums.Currency;
-import dat.enums.PaymentStatus;
-import dat.enums.ReceiptStatus;
+import dat.dtos.PaymentMethodDTO;
+import dat.entities.Payment;
+import dat.entities.Session;
+import dat.services.PaymentMethodService;
 import dat.services.PaymentService;
-import dat.services.StripePaymentService;
-import dat.services.SubscriptionService;
-import dat.utils.DateTimeUtil;
+import dat.services.ReceiptService;
+import dat.services.SessionService;
 import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Controller for Payment endpoints
  * Handles payment processing with Stripe integration
+ * 
+ * ARCHITECTURE: This controller ONLY uses Services (no DAOs)
+ * All business logic is delegated to the Service layer
  */
 public class PaymentController implements IController<PaymentDTO> {
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    private final PaymentDAO paymentDAO;
-    private final PaymentMethodDAO paymentMethodDAO;
-    private final CustomerDAO customerDAO;
-    private final SubscriptionDAO subscriptionDAO;
-    private final ProductDAO productDAO;
-    private final ReceiptDAO receiptDAO;
-    private final ActivityLogDAO activityLogDAO;
-    private final SessionDAO sessionDAO;
-    private final SmsBalanceDAO smsBalanceDAO;
-    private final StripePaymentService stripeService;
-    private final SubscriptionService subscriptionService;
-    private final PaymentService paymentService; 
+    // ✅ ONLY Services (no DAOs)
+    private final PaymentService paymentService;
+    private final PaymentMethodService paymentMethodService;
+    private final ReceiptService receiptService;
+    private final SessionService sessionService;
 
     public PaymentController(EntityManagerFactory emf) {
-        this.paymentDAO = PaymentDAO.getInstance(emf);
-        this.paymentMethodDAO = PaymentMethodDAO.getInstance(emf);
-        this.customerDAO = CustomerDAO.getInstance(emf);
-        this.subscriptionDAO = SubscriptionDAO.getInstance(emf);
-        this.productDAO = ProductDAO.getInstance(emf);
-        this.receiptDAO = ReceiptDAO.getInstance(emf);
-        this.activityLogDAO = ActivityLogDAO.getInstance(emf);
-        this.sessionDAO = SessionDAO.getInstance(emf);
-        this.smsBalanceDAO = SmsBalanceDAO.getInstance(emf);
-        this.stripeService = StripePaymentService.getInstance();
-        this.subscriptionService = SubscriptionService.getInstance(emf);
-        this.paymentService = PaymentService.getInstance(emf); 
+        this.paymentService = PaymentService.getInstance(emf);
+        this.paymentMethodService = PaymentMethodService.getInstance(emf);
+        this.receiptService = ReceiptService.getInstance(emf);
+        this.sessionService = SessionService.getInstance(emf);
     }
 
     /**
@@ -82,50 +63,13 @@ public class PaymentController implements IController<PaymentDTO> {
             String cvc = request.get("cvc").asText();
             boolean isDefault = request.has("isDefault") && request.get("isDefault").asBoolean();
 
-            // Get customer
-            Customer customer = customerDAO.getById(customerId)
-                    .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-
-            // Create payment method in Stripe
-            PaymentMethod stripePaymentMethod = stripeService.createPaymentMethod(
-                    cardNumber, expMonth, expYear, cvc
-            );
-
-            // Save to database
-            dat.entities.PaymentMethod paymentMethod = new dat.entities.PaymentMethod(
-                    customer,
-                    stripePaymentMethod.getType(),
-                    stripePaymentMethod.getCard().getBrand(),
-                    stripePaymentMethod.getCard().getLast4(),
-                    stripePaymentMethod.getCard().getExpMonth().intValue(),
-                    stripePaymentMethod.getCard().getExpYear().intValue(),
-                    stripePaymentMethod.getId(),
-                    isDefault,
-                    dat.enums.PaymentMethodStatus.ACTIVE,
-                    stripePaymentMethod.getCard().getFingerprint()
-            );
-
-            paymentMethodDAO.create(paymentMethod);
-            logger.info("Payment method added for customer: {}", customerId);
-
-            // Log activity
+            // Get session for activity logging
             Session session = getSessionFromContext(ctx);
-            if (session != null) {
-                Map<String, Object> metadata = new HashMap<>();
-                metadata.put("paymentMethodId", paymentMethod.getId());
-                metadata.put("brand", paymentMethod.getBrand());
-                metadata.put("last4", paymentMethod.getLast4());
-                metadata.put("isDefault", isDefault);
-                
-                ActivityLog activityLog = new ActivityLog(
-                    customer,
-                    session,
-                    ActivityLogType.ADD_CARD,
-                    ActivityLogStatus.SUCCESS,
-                    metadata
-                );
-                activityLogDAO.create(activityLog);
-            }
+
+            // Delegate to service
+            dat.entities.PaymentMethod paymentMethod = paymentMethodService.addPaymentMethod(
+                customerId, cardNumber, expMonth, expYear, cvc, isDefault, session
+            );
 
             ObjectNode response = objectMapper.createObjectNode()
                     .put("msg", "Payment method added successfully")
@@ -135,11 +79,9 @@ public class PaymentController implements IController<PaymentDTO> {
             
             ctx.status(201).json(response);
 
-        } catch (StripeException e) {
-            logger.error("Stripe error: {}", e.getMessage());
-            ErrorResponse.badRequest(ctx, stripeService.getErrorMessage(e));
-        } catch (IllegalArgumentException e) {
-            ErrorResponse.notFound(ctx, e.getMessage());
+        } catch (PaymentMethodService.PaymentMethodException e) {
+            logger.error("Payment method error: {}", e.getMessage());
+            ErrorResponse.badRequest(ctx, e.getMessage());
         } catch (Exception e) {
             ErrorResponse.internalError(ctx, "Failed to add payment method", logger, e);
         }
@@ -230,7 +172,7 @@ public class PaymentController implements IController<PaymentDTO> {
     public void read(Context ctx) {
         try {
             Long id = Long.parseLong(ctx.pathParam("id"));
-            Payment payment = paymentDAO.getById(id)
+            Payment payment = paymentService.getById(id)
                     .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
 
             PaymentDTO dto = convertToDTO(payment);
@@ -253,7 +195,7 @@ public class PaymentController implements IController<PaymentDTO> {
     public void getCustomerPayments(Context ctx) {
         try {
             Long customerId = Long.parseLong(ctx.pathParam("customerId"));
-            Set<Payment> payments = paymentDAO.getByCustomerId(customerId);
+            Set<Payment> payments = paymentService.getByCustomerId(customerId);
             
             List<PaymentDTO> dtos = payments.stream()
                     .map(this::convertToDTO)
@@ -276,7 +218,7 @@ public class PaymentController implements IController<PaymentDTO> {
     public void getReceipt(Context ctx) {
         try {
             Long paymentId = Long.parseLong(ctx.pathParam("paymentId"));
-            Receipt receipt = receiptDAO.getByPaymentId(paymentId)
+            dat.entities.Receipt receipt = receiptService.getByPaymentId(paymentId)
                     .orElseThrow(() -> new IllegalArgumentException("Receipt not found"));
 
             ctx.status(200).json(receipt);
@@ -291,67 +233,49 @@ public class PaymentController implements IController<PaymentDTO> {
         }
     }
 
-    // ==================== Helper Methods ====================
-
-    private Receipt generateReceipt(Payment payment, PaymentIntent paymentIntent) {
-        String receiptNumber = "RCP-" + System.currentTimeMillis();
-        
-        // Get receipt URL from Stripe (if available)
-        String receiptUrl = null;
+    /**
+     * GET /api/customers/{customerId}/payment-methods
+     * Get all payment methods for a customer
+     */
+    public void getCustomerPaymentMethods(Context ctx) {
         try {
-            if (paymentIntent.getLatestCharge() != null) {
-                com.stripe.model.Charge charge = com.stripe.model.Charge.retrieve(paymentIntent.getLatestCharge());
-                receiptUrl = charge.getReceiptUrl();
-            }
+            Long customerId = Long.parseLong(ctx.pathParam("customerId"));
+            
+            // Get payment methods from service
+            Set<dat.entities.PaymentMethod> paymentMethods = paymentMethodService.getByCustomer(customerId);
+            
+            // Convert to DTOs
+            List<PaymentMethodDTO> dtos = paymentMethods.stream()
+                    .map(pm -> {
+                        PaymentMethodDTO dto = new PaymentMethodDTO();
+                        dto.id = pm.getId();
+                        dto.customerId = pm.getCustomer().getId();
+                        dto.type = pm.getType();
+                        dto.brand = pm.getBrand();
+                        dto.last4 = pm.getLast4();
+                        dto.expMonth = pm.getExpMonth();
+                        dto.expYear = pm.getExpYear();
+                        dto.processorMethodId = pm.getProcessorMethodId();
+                        dto.isDefault = pm.getIsDefault();
+                        dto.status = pm.getStatus();
+                        return dto;
+                    })
+                    .sorted((a, b) -> Boolean.compare(b.isDefault, a.isDefault)) // Default first
+                    .collect(Collectors.toList());
+            
+            ctx.status(200).json(dtos);
+            logger.info("Retrieved {} payment methods for customer ID: {}", dtos.size(), customerId);
+            
+        } catch (NumberFormatException e) {
+            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
+        } catch (PaymentMethodService.PaymentMethodException e) {
+            ErrorResponse.notFound(ctx, e.getMessage());
         } catch (Exception e) {
-            logger.warn("Could not retrieve Stripe receipt URL: {}", e.getMessage());
+            ErrorResponse.internalError(ctx, "Error retrieving payment methods", logger, e);
         }
-        
-        // Build detailed metadata
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("customerId", payment.getCustomer().getId());
-        metadata.put("paymentId", payment.getId());
-        metadata.put("currency", payment.getCurrency().toString());
-        metadata.put("paymentStatus", payment.getStatus().toString());
-        
-        // Add subscription info if available
-        if (payment.getSubscription() != null) {
-            metadata.put("subscriptionId", payment.getSubscription().getId());
-            metadata.put("planName", payment.getSubscription().getPlan().getName());
-            metadata.put("billingPeriod", payment.getSubscription().getPlan().getPeriod().toString());
-        }
-        
-        // Add product info if available
-        if (payment.getProduct() != null) {
-            metadata.put("productId", payment.getProduct().getId());
-            metadata.put("productName", payment.getProduct().getName());
-            metadata.put("productType", payment.getProduct().getProductType().toString());
-            if (payment.getProduct().getSmsCount() != null) {
-                metadata.put("smsCount", payment.getProduct().getSmsCount());
-            }
-        }
-        
-        // Handle null payment method (for one-time Stripe Elements payments)
-        String brand = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getBrand() : "Card";
-        String last4 = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getLast4() : "****";
-        Integer expYear = payment.getPaymentMethod() != null ? payment.getPaymentMethod().getExpYear() : null;
-        
-        return new Receipt(
-                payment,
-                receiptNumber,
-                payment.getPriceCents(),
-                DateTimeUtil.now(),
-                ReceiptStatus.PAID,
-                receiptUrl,
-                payment.getCustomer().getUser().getEmail(),
-                payment.getCustomer().getCompanyName(),
-                brand,
-                last4,
-                expYear,
-                paymentIntent.getId(),
-                metadata
-        );
     }
+
+    // ==================== Helper Methods ====================
 
     private PaymentDTO convertToDTO(Payment payment) {
         PaymentDTO dto = new PaymentDTO();
@@ -373,15 +297,12 @@ public class PaymentController implements IController<PaymentDTO> {
      */
     private Session getSessionFromContext(Context ctx) {
         try {
-            String token = ctx.header("Authorization");
-            if (token != null && token.startsWith("Bearer ")) {
-                token = token.substring(7);
-                return sessionDAO.findByToken(token).orElse(null);
-            }
+            String authHeader = ctx.header("Authorization");
+            return sessionService.getFromAuthHeader(authHeader).orElse(null);
         } catch (Exception e) {
             logger.warn("Could not retrieve session from context: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 
     // ==================== IController Interface ====================
@@ -389,52 +310,6 @@ public class PaymentController implements IController<PaymentDTO> {
     @Override
     public void readAll(Context ctx) {
         ErrorResponse.notImplemented(ctx, "Use customer-specific endpoint: GET /api/customers/{id}/payments");
-    }
-
-    /**
-     * GET /api/customers/{customerId}/payment-methods
-     * Get all payment methods for a customer
-     */
-    public void getCustomerPaymentMethods(Context ctx) {
-        try {
-            Long customerId = Long.parseLong(ctx.pathParam("customerId"));
-            
-            // Get customer
-            Customer customer = customerDAO.getById(customerId)
-                    .orElseThrow(() -> new IllegalArgumentException("Customer not found"));
-            
-            // Get payment methods
-            Set<dat.entities.PaymentMethod> paymentMethods = paymentMethodDAO.getByCustomer(customer);
-            
-            // Convert to DTOs
-            List<dat.dtos.PaymentMethodDTO> dtos = paymentMethods.stream()
-                    .map(pm -> {
-                        dat.dtos.PaymentMethodDTO dto = new dat.dtos.PaymentMethodDTO();
-                        dto.id = pm.getId();
-                        dto.customerId = pm.getCustomer().getId();
-                        dto.type = pm.getType();
-                        dto.brand = pm.getBrand();
-                        dto.last4 = pm.getLast4();
-                        dto.expMonth = pm.getExpMonth();
-                        dto.expYear = pm.getExpYear();
-                        dto.processorMethodId = pm.getProcessorMethodId();
-                        dto.isDefault = pm.getIsDefault();
-                        dto.status = pm.getStatus();
-                        return dto;
-                    })
-                    .sorted((a, b) -> Boolean.compare(b.isDefault, a.isDefault)) // Default first
-                    .collect(Collectors.toList());
-            
-            ctx.status(200).json(dtos);
-            logger.info("Retrieved {} payment methods for customer ID: {}", dtos.size(), customerId);
-            
-        } catch (NumberFormatException e) {
-            ErrorResponse.badRequest(ctx, "Invalid customer ID format");
-        } catch (IllegalArgumentException e) {
-            ErrorResponse.notFound(ctx, e.getMessage());
-        } catch (Exception e) {
-            ErrorResponse.internalError(ctx, "Error retrieving payment methods", logger, e);
-        }
     }
 
     @Override
@@ -447,4 +322,3 @@ public class PaymentController implements IController<PaymentDTO> {
         ErrorResponse.notImplemented(ctx, "Payments cannot be deleted");
     }
 }
-

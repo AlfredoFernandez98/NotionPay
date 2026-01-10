@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Service for handling complete payment processing with ACID guarantees
@@ -382,6 +384,20 @@ public class PaymentService {
             paymentIntent.getId(),
             metadata
         );
+    }
+
+    /**
+     * Get payment by ID
+     */
+    public Optional<Payment> getById(Long id) {
+        return paymentDAO.getById(id);
+    }
+
+    /**
+     * Get all payments for a customer
+     */
+    public Set<Payment> getByCustomerId(Long customerId) {
+        return paymentDAO.getByCustomerId(customerId);
     }
 
     // ==================== Inner Classes ====================
