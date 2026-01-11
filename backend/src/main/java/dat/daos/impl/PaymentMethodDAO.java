@@ -115,5 +115,25 @@ public class PaymentMethodDAO implements IDAO<PaymentMethod> {
             return Optional.empty();
         }
     }
+
+    /**
+     * Find payment method by fingerprint for a specific customer
+     * Used for duplicate card detection
+     */
+    public Optional<PaymentMethod> findByFingerprint(Customer customer, String fingerprint) {
+        try (EntityManager em = emf.createEntityManager()) {
+            PaymentMethod paymentMethod = em.createQuery(
+                    "SELECT pm FROM PaymentMethod pm WHERE pm.customer = :customer AND pm.fingerprint = :fingerprint AND pm.status = :status",
+                    PaymentMethod.class
+            )
+                    .setParameter("customer", customer)
+                    .setParameter("fingerprint", fingerprint)
+                    .setParameter("status", PaymentMethodStatus.ACTIVE)
+                    .getSingleResult();
+            return Optional.of(paymentMethod);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
 }
 

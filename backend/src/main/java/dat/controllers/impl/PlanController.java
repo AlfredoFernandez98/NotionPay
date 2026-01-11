@@ -1,9 +1,9 @@
 package dat.controllers.impl;
 
 import dat.controllers.IController;
-import dat.daos.impl.PlanDAO;
 import dat.dtos.PlanDTO;
 import dat.entities.Plan;
+import dat.services.PlanService;
 import dat.utils.ErrorResponse;
 import io.javalin.http.Context;
 import jakarta.persistence.EntityManagerFactory;
@@ -14,12 +14,20 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Controller for Plan endpoints
+ * 
+ * ARCHITECTURE: This controller ONLY uses Services (no DAOs)
+ * All business logic is delegated to the Service layer
+ */
 public class PlanController implements IController<PlanDTO> {
     private static final Logger logger = LoggerFactory.getLogger(PlanController.class);
-    private final PlanDAO planDAO;
+    
+    // ✅ ONLY Services (no DAOs)
+    private final PlanService planService;
 
     public PlanController(EntityManagerFactory emf) {
-        this.planDAO = PlanDAO.getInstance(emf);
+        this.planService = PlanService.getInstance(emf);
     }
 
     @Override
@@ -28,8 +36,8 @@ public class PlanController implements IController<PlanDTO> {
             // Get ID from path parameter
             Long id = Long.parseLong(ctx.pathParam("id"));
             
-            // Get plan from DAO
-            Optional<Plan> planOpt = planDAO.getById(id);
+            // Get plan from service
+            Optional<Plan> planOpt = planService.getById(id);
             
             if (planOpt.isPresent()) {
                 // Convert entity → DTO
@@ -51,7 +59,7 @@ public class PlanController implements IController<PlanDTO> {
     public void readAll(Context ctx) {
         try {
             // Get all ACTIVE plans only
-            Set<Plan> plans = planDAO.getAllActivePlans();
+            Set<Plan> plans = planService.getAllActivePlans();
             
             // Convert Set<Plan> → Set<PlanDTO>
             Set<PlanDTO> plansDTO = plans.stream()
@@ -80,6 +88,7 @@ public class PlanController implements IController<PlanDTO> {
     public void delete(Context ctx) {
         ErrorResponse.notImplemented(ctx, "Plans are managed by admins only");
     }
+
     /**
      * Helper: Convert Plan entity to PlanDTO
      */
