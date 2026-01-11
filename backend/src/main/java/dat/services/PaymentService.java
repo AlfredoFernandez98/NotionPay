@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Service for handling complete payment processing with ACID guarantees
+ * Service for handling complete payment processing with ACID 
  * All payment operations are executed within a single database transaction
  * 
  * ACID Principles Implementation:
@@ -68,7 +68,7 @@ public class PaymentService {
     }
 
     /**
-     * Process a complete payment with ACID guarantees
+     * Process a complete payment with ACID 
      * 
      * This method executes the entire payment flow within a single database transaction:
      * 1. Validate input and retrieve entities
